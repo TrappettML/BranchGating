@@ -1,15 +1,11 @@
 
 import torch as th
 from torch import nn
-import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import torch.nn.functional as F
 from ipdb import set_trace
 
 
 class BranchLayer(nn.Module):
-    def __init__(self, n_in, n_npb, n_b, n_next_h, device='cpu') -> None:
+    def __init__(self, n_in: int, n_npb: int, n_b:int , n_next_h: int, device='cpu') -> None:
         '''
         args:
         - branch_params (dict): A dictionary containing the following:
@@ -46,7 +42,8 @@ class BranchLayer(nn.Module):
         return x
         
     def element_wise_mult(self, x):
-        return x * self.weights
+        x *= self.weights
+        return x
     
     def create_weights(self) -> None:
         self.w = th.empty(self.n_npb, self.n_b*self.n_next_h)
@@ -56,7 +53,7 @@ class BranchLayer(nn.Module):
     def create_all_branch_indices(self) -> None:
         # row is organized as n_b * n_next_h, so iterate 
         # shape of all_branch_indices is (n_npb, n_b * n_next_h)
-        self.all_branch_indices = th.randint(low=0, high=self.n_in, size=(self.n_npb, self.n_b * self.n_next_h))
+        self.all_branch_indices = th.randint(low=0, high=self.n_in, size=(self.n_npb, self.n_b * self.n_next_h), device=self.device, dtype=th.long)
         
     def _output_shape(self):
         return (self.n_b, self.n_next_h)

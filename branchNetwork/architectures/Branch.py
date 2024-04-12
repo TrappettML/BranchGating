@@ -41,3 +41,26 @@ class BranchModel(nn.Module):
             return self.layer_3(x)
         
         
+def test_Branch():
+    model_configs = {'n_in': 784, 
+                    'n_out': 10, 
+                    'n_contexts': 5, 
+                    'device': 'cpu', 
+                    'n_npb': [56, 200], 
+                    'n_branches': [14, 10], 
+                    'sparsity': 0.8,
+                    'dropout': 0,}
+    
+    x = torch.rand(32, 784)
+    
+    branch_model = BranchModel(model_configs)
+    for context in range(model_configs['n_contexts']):
+        print(f'Testing context {context}:')
+        y = branch_model(x, context)
+        assert y.shape == (32, 10)
+        print(f"\ttest passed.")
+        print(f"\ty sum: {y.sum()}")
+        
+if __name__ == '__main__':
+    test_Branch()
+    print('BranchModel test passed.')

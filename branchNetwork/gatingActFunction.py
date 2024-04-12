@@ -1,15 +1,7 @@
 # __init__.py
-
 import torch as th
 from torch import nn
-import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import torch.nn.functional as F
 from ipdb import set_trace
-
-
-
 
 class BranchGatingActFunc(nn.Module):
     def __init__(self, n_next_h, n_branches=1, n_contexts=1, sparsity=0):
@@ -41,9 +33,9 @@ class BranchGatingActFunc(nn.Module):
             mask = generate_interpolated_array(self.n_next_h, self.sparsity)
             return mask.float()
         else:
-            return self.gen_at_least_one_branch_mask()
+            return self.gen_branching_mask()
         
-    def gen_at_least_one_branch_mask(self):
+    def gen_branching_mask(self):
         return th.stack([generate_interpolated_array(self.n_branches, self.sparsity) for _ in range(self.n_next_h)]).float().T
         
     def gen_mask(self):    
@@ -86,9 +78,9 @@ def generate_interpolated_array(x, value):
     Returns:
     - A PyTorch tensor according to the specified rules.
     """
-    # Ensure value is within bounds
-    if not (0 <= value <= 1):
-        raise ValueError("Value must be between 0 and 1.")
+    assert x > 0, "x must be greater than 0"
+    assert value >= 0, "value must be greater than or equal to 0"
+    assert value <= 1, "value must be less than or equal to 1"
 
     # Calculate the transition index based on the value
     transition_index = round((x - 1) * (1 - value))
