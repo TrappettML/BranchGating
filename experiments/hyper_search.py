@@ -9,9 +9,12 @@ from tests.GatingBranchRotatingMNIST import train_epoch, evaluate_model
 import torch
 import torch.nn as nn
 import ray
-from ray import tune
+from ray import tune, train
+import pandas as pd
 
 from typing import Union
+from ipdb import set_trace
+import time
 
 
 MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
@@ -19,8 +22,8 @@ MODEL_CONFIGS = {'n_in': 784,
                      'n_out': 10, 
                      'n_contexts': 1, 
                      'device': 'cpu', 
-                     'n_npb': 200, 
-                     'n_branches': 10, 
+                     'n_npb': [56, 200], 
+                     'n_branches': [14, 10], 
                      'sparsity': 0.8,
                      'dropout': 0.5,}
     
@@ -33,25 +36,40 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
     for epoch in range(configs['n_epochs']):
         train_epoch(model, train_loader, configs['rotation_in_degrees'], optimizer, criterion, device='cpu')
         accuracy, _ = evaluate_model(model, configs['rotation_in_degrees'], test_loader, criterion)
-        tune.report(mean_accuracy=accuracy)
+        train.report(dict(mean_accuracy=accuracy))
     return accuracy
 
-def main():
-    ray.init(num_cpus=20)
-    analysis = tune.run(
-        train_and_evaluate_model,
-        config={
+def run_tune():
+    if not ray.is_initialized():
+        ray.init(num_cpus=20)
+    tuner = tune.Tuner(
+        tune.with_resources(train_and_evaluate_model, {"cpu": 2}),
+        param_space={
             "model_class": tune.grid_search(MODEL_CLASSES),
             "model_configs": MODEL_CONFIGS,
-            "lr": tune.grid_search([0.001, 0.01, 0.1]),
-            "batch_size": tune.grid_search([32, 64, 128]),
-            "n_epochs": 20,
+            "lr": tune.grid_search([0.001, ]),
+            "batch_size": tune.grid_search([32,]),
+            "n_epochs": 1,
+            "rotation_in_degrees": 0,
         },
-        num_samples=10,
-        resources_per_trial={"cpu": 2},
+        tune_config=tune.TuneConfig(num_samples=1, metric="mean_accuracy", mode="max"),
     )
-    print(analysis.dataframe())
+    results = tuner.fit()
     ray.shutdown()
+    print(f'Best result: {results.get_best_result()}')
+    
+    return results.get_results().get_dataframe()
+
+def process_results(results: pd.DataFrame):
+    results.to_pickle('/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/hyper_search_results.pkl')
+    print(f'Saved results to /home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/hyper_search_results.pkl')
+    
+def main():
+    time_start = time.time()
+    results = run_tune()
+    elapsed_time = time.time() - time_start
+    print(f'Elapsed time: {elapsed_time} seconds')
+    process_results(results)
     
     
 if __name__ == "__main__":

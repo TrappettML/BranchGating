@@ -9,7 +9,7 @@ from branchNetwork.simpleMLP import SimpleMLP
 import torch
 
 
-DATA_DIR = '../data'
+DATA_DIR = '/home/users/MTrappett/mtrl/BranchGatingProject/data'
 
 def load_mnist_data(batch_size=32, download=True):
     """
