@@ -36,8 +36,8 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
     for epoch in range(configs['n_epochs']):
         train_epoch(model, train_loader, configs['rotation_in_degrees'], optimizer, criterion, device='cpu')
         accuracy, _ = evaluate_model(model, configs['rotation_in_degrees'], test_loader, criterion)
-        train.report(dict(mean_accuracy=accuracy))
-    return accuracy
+        train.report({'mean_accuracy':accuracy})
+    # return accuracy
 
 def run_tune():
     if not ray.is_initialized():
