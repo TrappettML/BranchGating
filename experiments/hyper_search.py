@@ -58,7 +58,7 @@ def run_tune():
     ray.shutdown()
     print(f'Best result: {results.get_best_result()}')
     
-    return results.get_results().get_dataframe()
+    return results.get_dataframe()
 
 def process_results(results: pd.DataFrame):
     results.to_pickle('/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/hyper_search_results.pkl')

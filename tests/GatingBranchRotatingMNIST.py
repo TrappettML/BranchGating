@@ -21,9 +21,8 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        # if i > 10:
-        #     print('breaking')
-        #     break
+        if i > 3:
+            break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -88,7 +87,7 @@ def ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
     return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
      
 def parallel_evaluate_model(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
-    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()])
+    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items()) if i < 5])
     # results = [ray_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
     return results # list of dictionaries
 
@@ -139,12 +138,9 @@ def make_plot(results_dictionary: dict[str, OrderedDict], subfig_labels: list, r
     handles, labels = axs[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper right')
 
-    # Adjust layout
-    plt.tight_layout()
-
     # Adding an overall figure title, a bit larger
     fig.suptitle(title, fontsize=16, fontweight='bold', y=1.02)
-    plt.savefig(f'/home/users/MTrappett/mtrl/BranchGatingProject/data/plots/{save_str}.png')
+    plt.savefig(f'/home/users/MTrappett/mtrl/BranchGatingProject/data/plots/{save_str}.png', bbox_inches='tight')
       
 def plot_results(results_dictionary: dict[str, OrderedDict]):
     '''results dictionary will have keys of model name and values of Ordereddict with element:
@@ -340,7 +336,7 @@ def process_and_plot_results(results):
 def run_continual_learning():
     model_names = ['Masse', 'Simple', 'Branching', 'Expert']
     rotation_degrees = [0, 120, 240]
-    epochs_per_train = 100
+    epochs_per_train = 3
     ray.init(num_cpus=70)
     results = ray.get([train_model.remote(model_name, rotation_degrees, epochs_per_train) for model_name in model_names])
     ray.shutdown()
