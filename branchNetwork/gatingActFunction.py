@@ -24,7 +24,7 @@ class BranchGatingActFunc(nn.Module):
         self.n_next_h = n_next_h
         self.n_contexts = n_contexts
         self.n_branches = n_branches
-        self.masks = [self.make_mask() for _ in range(n_contexts)]
+        self.masks = {}
         self.forward = self.branch_forward if n_branches > 1 else self.masse_forward
         self.seen_contexts = list()
         
@@ -37,32 +37,26 @@ class BranchGatingActFunc(nn.Module):
         
     def gen_branching_mask(self):
         return th.stack([generate_interpolated_array(self.n_branches, self.sparsity) for _ in range(self.n_next_h)]).float().T
-        
-    def gen_mask(self):    
-        flat_mask = generate_interpolated_array(self.n_next_h*self.n_branches, self.sparsity)
-        shaped_mask = flat_mask.view(self.n_branches, self.n_next_h)
-        return shaped_mask.float()
   
     def branch_forward(self, x, context=0):
         '''forward function for when n_b > 1
            sum over the n_b dimension'''
-        context_index = self.get_context(context)
-        gating_values = x * self.masks[context_index]
-        return th.sum(gating_values, dim=1)
+        mask = self.get_context(context)
+        return th.sum(x * mask, dim=1)
     
     def masse_forward(self, x, context=0):
         '''forward function for when n_b = 1,
            no sum needed'''
-        context_index = self.get_context(context)
-        gating_values = x * self.masks[context_index]
-        return gating_values
+        mask = self.get_context(context)
+        return x * mask
+
     
     def get_context(self, context):
         '''check if context is in seen contexts, and return the index'''
-        if context not in self.seen_contexts:
-            self.seen_contexts.append(context)
-            assert len(self.seen_contexts) <= self.n_contexts, "Contexts are more than the specified number" 
-        return self.seen_contexts.index(context)
+        if context not in self.masks:
+            self.masks[context] = self.make_mask()
+            assert len(self.masks) <= self.n_contexts, "Contexts are more than the specified number" 
+        return self.masks[context]
         
         
             
