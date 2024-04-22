@@ -16,7 +16,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-task={{NUM_GPUS_PER_NODE}}
 
-#SBATCH --time=1-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
+#SBATCH --time=14-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
 #SBATCH --account=tau  ### Account used for job submission
 #SBATCH --mail-user=$onebonsai.warrior@gmail.com
 #SBATCH --mail-type=ALL
