@@ -22,8 +22,8 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        # if i > 3:
-        #     break
+        if i > 3:
+            break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -41,8 +41,8 @@ def evaluate_model(model, task, data_loader, criterion, device='cpu'):
     total_loss = 0
     with torch.no_grad():
         for i, (images, labels) in enumerate(data_loader):
-            # if i>3:
-            #     break
+            if i>3:
+                break
             images, labels = images.to(device), labels.to(device)
             outputs = model(images, task)
             loss = criterion(outputs, labels)
@@ -80,20 +80,18 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
 
 def run_tune():
     if not ray.is_initialized():
-        ray.init(num_cpus=120)
+        ray.init(num_cpus=20)
     tuner = tune.Tuner(
-        tune.with_resources(train_and_evaluate_model, {"cpu": 1}),
+        tune.with_resources(train_and_evaluate_model, {"cpu": 2}),
         param_space={
             "model_name": tune.grid_search(MODEL_NAMES),
             "model_configs": MODEL_CONFIGS,
-            "lr": tune.grid_search([0.0001, 0.001, 0.01, 0.1 ]),
-            "batch_size": tune.grid_search([32, 64, 128, 512]),
-            "n_epochs": 20,
+            "lr": tune.grid_search([0.001, ]),
+            "batch_size": tune.grid_search([32,]),
+            "n_epochs": 10,
             "rotation_in_degrees": 0,
         },
-        tune_config=tune.TuneConfig(num_samples=5, 
-                                    metric="mean_accuracy", 
-                                    mode="max"),
+        tune_config=tune.TuneConfig(num_samples=1, metric="mean_accuracy", mode="max"),
     )
     results = tuner.fit()
     ray.shutdown()

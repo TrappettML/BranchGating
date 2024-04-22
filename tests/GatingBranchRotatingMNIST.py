@@ -21,7 +21,7 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        if i > 3:
+        if i > 2:
             break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
@@ -87,7 +87,7 @@ def ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
     return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
      
 def parallel_evaluate_model(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
-    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items()) if i < 5])
+    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items()) if i < 2])
     # results = [ray_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
     return results # list of dictionaries
 
@@ -117,7 +117,8 @@ def make_plot(results_dictionary: dict[str, OrderedDict], subfig_labels: list, r
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-        ax.yaxis.set_major_locator(MaxNLocator(nbins=2)) 
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=2))
+        ax.set_yticks([0, 1]) 
         
         # Adding vertical bars
         third_of_data = int(len(list(results.values())[i])/3)
