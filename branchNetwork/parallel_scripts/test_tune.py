@@ -12,7 +12,8 @@ print(f'Number of GPUs from torch: {torch.cuda.device_count()}')
 
 ray.init(address='auto')
 print(f'Ray gpus: {ray.get_gpu_ids()}')
-@ray.remote
+
+# @ray.remote
 def square(x):
     return x * x, os.getpid(), socket.gethostname()
 
