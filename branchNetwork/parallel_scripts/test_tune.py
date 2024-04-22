@@ -16,7 +16,8 @@ print(f'Ray gpus: {ray.get_gpu_ids()}')
 # @ray.remote
 def square(config):
     x = config['x']
-    return {'sqaure':x * x,'pid':os.getpid(),'hostname': socket.gethostname()}
+    print({'sqaure':x * x,'pid':os.getpid(),'hostname': socket.gethostname()})
+    return {'sqaure':x * x}
 
 print(f'Ray cluster resources: {ray.cluster_resources()}')
 num_cpus_in_ray = int(ray.cluster_resources()['CPU'])
