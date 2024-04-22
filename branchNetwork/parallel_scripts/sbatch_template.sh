@@ -16,7 +16,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-task={{NUM_GPUS_PER_NODE}}
 
-#SBATCH --time=14-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
+#SBATCH --time={{DAYS}}-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
 #SBATCH --account=tau  ### Account used for job submission
 #SBATCH --mail-user=$mtrappet@uoregon.edu
 #SBATCH --mail-type=ALL

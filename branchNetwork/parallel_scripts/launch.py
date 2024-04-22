@@ -22,6 +22,7 @@ GIVEN_NODE = "{{GIVEN_NODE}}"
 COMMAND_SUFFIX = "{{COMMAND_SUFFIX}}"
 LOAD_ENV = "{{LOAD_ENV}}"
 CONDA_ENV = "{{CONDA_ENV}}"
+DAYS = "{{DAYS}}"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -32,6 +33,10 @@ if __name__ == '__main__':
     parser.add_argument(
         "--num-nodes", "-n", type=int, default=1,
         help="Number of nodes to use."
+    )
+    parser.add_argument(
+        "--days", "-d", type=int, default=1,
+        help="Number of days to limit running time. Default: 1."
     )
     parser.add_argument(
         "--node", "-w", type=str, default="",
@@ -82,6 +87,7 @@ if __name__ == '__main__':
     text = text.replace(GIVEN_NODE, node_info)
     text = text.replace(COMMAND_SUFFIX, "")
     text = text.replace(CONDA_ENV, str(args.conda_env))
+    text = text.replace(DAYS, str(args.days))
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO "
         "PRODUCTION!",
