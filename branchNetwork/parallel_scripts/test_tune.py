@@ -25,8 +25,11 @@ analysis = tune.Tuner(
     param_space={"x": tune.grid_search([i for i in range(num_cpus_in_ray)])},  # Running as many trials as CPUs
     # verbose=1  # Increase verbosity for detailed output
 )
-
+results = analysis.fit()
 # Print out the results of the experiments
 print("Results:")
-for result in analysis.results:
-    print(result)
+
+try:
+    print(results)
+except Exception as e:
+    print("Error: ", e)
