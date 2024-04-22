@@ -22,7 +22,7 @@ num_cpus_in_ray = int(ray.cluster_resources()['CPU'])
 # Setup and run the Ray Tune experiment
 analysis = tune.Tuner(
     tune.with_resources(square, {"cpu": 1}),
-    config={"x": tune.grid_search([i for i in range(num_cpus_in_ray)])},  # Running as many trials as CPUs
+    param_space={"x": tune.grid_search([i for i in range(num_cpus_in_ray)])},  # Running as many trials as CPUs
     # verbose=1  # Increase verbosity for detailed output
 )
 
