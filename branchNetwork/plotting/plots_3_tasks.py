@@ -1,19 +1,11 @@
-import torch
-from branchNetwork.simpleMLP import SimpleMLP
-from branchNetwork.BranchLayer import BranchLayer
-from branchNetwork.gatingActFunction import BranchGatingActFunc
-from branchNetwork.dataloader import load_rotated_flattened_mnist_data
-from torch.utils.data import DataLoader
+
 import matplotlib.pyplot as plt
 import numpy as np
-from torch import nn
-from tqdm import tqdm
-from ipdb import set_trace
+
 from matplotlib.ticker import MaxNLocator
-import ray
+
 from collections import OrderedDict
-from typing import Callable, Union
-from pickle import dump
+
 
 
 def make_results_dict(results):
@@ -39,8 +31,8 @@ def make_plot(results_dictionary: dict[str, OrderedDict], subfig_labels: list, r
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-        ax.yaxis.set_major_locator(MaxNLocator(nbins=2))
-        ax.set_yticks([0, 1]) 
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
+        # ax.set_yticks([0, 1]) 
         
         # Adding vertical bars
         third_of_data = int(len(list(results.values())[i])/3)

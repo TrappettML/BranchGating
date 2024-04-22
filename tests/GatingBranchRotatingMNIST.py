@@ -71,12 +71,13 @@ def parallel_eval_data(model, task, data_loader, criterion, device='cpu'):
     correct, total = 0, 0
     total_loss = 0
     with torch.no_grad():
-        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader)])
+        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader) if i < 3])
         for correct_batch, loss_batch, total_batch in results:
             total += total_batch
             correct += correct_batch
             total_loss += loss_batch
-    accuracy = 100 * correct / total
+        accuracy = 100 * correct / total
+    print(f'accuracy: {accuracy}; correct: {correct}; total: {total}')
     return accuracy, total_loss / len(data_loader)
 
 @ray.remote
@@ -88,10 +89,9 @@ def ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
     return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
      
 def parallel_evaluate_model(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
-    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items()) if i < 2])
+    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items()) if i < 3])
     # results = [ray_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
     return results # list of dictionaries
-
 
 def merge_results_for_model(model_aggregated_results: OrderedDict, train_losses: float, test_results:list[dict[str, tuple]], train_task_name: int):
     model_aggregated_results['Training_Loss'].append(train_losses)
@@ -101,74 +101,6 @@ def merge_results_for_model(model_aggregated_results: OrderedDict, train_losses:
         accuracy = test_result[angle][0]
         model_aggregated_results[f'd{angle}_loss'].append(loss)
         model_aggregated_results[f'd{angle}_Accuracy'].append(accuracy)
-   
-def make_plot(results_dictionary: dict[str, OrderedDict], subfig_labels: list, results_indices: list, title: str, save_str: str, yaxis_label: str='Loss'):
-    fig, axs = plt.subplots(len(subfig_labels), 1, figsize=(10, 8), sharex=True, layout="constrained")
-    colors ={model_name:color for model_name, color in zip(results_dictionary.keys(), ['blue', 'orange', 'green', 'red'])}
-    
-    for j, (i, ax) in enumerate(zip(results_indices, axs)):
-        for results in results_dictionary.values():
-            ax.plot(np.array(list(results.values())[i]), 
-                    label=list(results.values())[0], 
-                    color=colors[list(results.values())[0]], 
-                    linewidth=2)
-        
-        # Removing the red rectangle by not adding it this time
-        ax.grid(True)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-
-        ax.yaxis.set_major_locator(MaxNLocator(nbins=2))
-        ax.set_yticks([0, 1]) 
-        
-        # Adding vertical bars
-        third_of_data = int(len(list(results.values())[i])/3)
-        ax.axvline(x=third_of_data, color='grey', linestyle='--', linewidth=2)
-        ax.axvline(x=2*third_of_data, color='grey', linestyle='--', linewidth=2)
-        
-        # Setting larger labels
-        ax.set_ylabel(yaxis_label, fontsize=14)
-
-        # Placing larger, bold text aligned with each subplot on the y-axis
-        fig.text(1.05, 0.5-(i*0.01), subfig_labels[j], fontsize=12, fontweight='bold',
-                verticalalignment='center', horizontalalignment='left', transform=ax.transAxes)
-
-    # Setting the x-axis label only once, with a larger font size
-    axs[-1].set_xlabel('Epochs', fontsize=14)
-
-    # Adding a legend
-    handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper right')
-
-    # Adding an overall figure title, a bit larger
-    fig.suptitle(title, fontsize=16, fontweight='bold', y=1.02)
-    plt.savefig(f'/home/users/MTrappett/mtrl/BranchGatingProject/data/plots/{save_str}.png', bbox_inches='tight')
-      
-def plot_results(results_dictionary: dict[str, OrderedDict]):
-    '''results dictionary will have keys of model name and values of Ordereddict with element:
-    ['model_name',
-    'Training_Loss', 
-    f'd{degrees[0]}_loss', 
-    f'd{degrees[1]}_loss',
-    f'd{degrees[2]}_loss',
-    f'd{degrees[0]}_Accuracy',
-    f'd{degrees[1]}_Accuracy',
-    f'd{degrees[2]}_Accuracy',]
-    '''
-    
-    subfig_labels = ['Training Loss',
-                    'Validation Loss for Task 1', 
-                    'Validation Loss for Task 2', 
-                    'Validation Loss for Task 3']
-    results_indices = [1,2,3,4]
-    make_plot(results_dictionary, subfig_labels, results_indices, 'Comparison of all losses during training and evaluation', 'loss_plot', 'Loss')
-    
-    subfig_labels = ['Training Loss',
-                    'Validation Accuracy for Task 1', 
-                    'Validation Accuracy for Task 2', 
-                    'Validation Accuracy for Task 3']
-    results_indices = [1,5,6,7]
-    make_plot(results_dictionary, subfig_labels, results_indices,'Comparison of evaluation accuracy after training', 'accuracy_plot', 'Accuracy')
 
 def single_task(model:nn.Module,
                 optimizer: Callable, 
@@ -328,11 +260,6 @@ def train_model(model_name: str,
                     model_data, device=device)
     return {'model_name': model_name, 'data': model_data}
 
-def process_and_plot_results(results):
-    results_dictionary = dict()
-    for result in results:
-        results_dictionary[result['model_name']] = result['data']
-    plot_results(results_dictionary)
     
 def save_results(results):
     with open('/home/users/MTrappett/mtrl/BranchGatingProject/data/results/results.pkl', 'wb') as f:
@@ -348,7 +275,7 @@ def run_continual_learning():
     # results = [train_model(model_name, rotation_degrees, epochs_per_train)
     # for model_name in model_names]
     save_results(results)
-    # process_and_plot_results(results)
+    print('Results saved')
 
 
 
