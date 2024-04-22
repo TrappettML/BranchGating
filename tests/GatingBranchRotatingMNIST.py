@@ -5,16 +5,14 @@ from branchNetwork.BranchLayer import BranchLayer
 from branchNetwork.gatingActFunction import BranchGatingActFunc
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import numpy as np
 from torch import nn
-from tqdm import tqdm
 from ipdb import set_trace
 from matplotlib.ticker import MaxNLocator
 import ray
 from collections import OrderedDict
 from typing import Callable, Union
 from pickle import dump
+import os
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
@@ -41,8 +39,8 @@ def evaluate_model(model, task, data_loader, criterion, device='cpu'):
     total_loss = 0
     with torch.no_grad():
         for i, (images, labels) in enumerate(data_loader):
-            if i>10:
-                break
+            # if i>10:
+            #     break
             images, labels = images.to(device), labels.to(device)
             outputs = model(images, task)
             loss = criterion(outputs, labels)
@@ -71,7 +69,7 @@ def parallel_eval_data(model, task, data_loader, criterion, device='cpu'):
     correct, total = 0, 0
     total_loss = 0
     with torch.no_grad():
-        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader) if i < 3])
+        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader)]) # if i < 3
         for correct_batch, loss_batch, total_batch in results:
             total += total_batch
             correct += correct_batch
@@ -89,7 +87,7 @@ def ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
     return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
      
 def parallel_evaluate_model(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
-    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items()) if i < 3])
+    results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items())]) # if i < 3
     # results = [ray_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
     return results # list of dictionaries
 
@@ -261,8 +259,11 @@ def train_model(model_name: str,
     return {'model_name': model_name, 'data': model_data}
 
     
-def save_results(results):
-    with open('/home/users/MTrappett/mtrl/BranchGatingProject/data/results/results.pkl', 'wb') as f:
+def save_results(results, results_path):
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
+        
+    with open(f'{results_path}/results.pkl', 'wb') as f:
         dump(results, f)
         
 def run_continual_learning():
@@ -274,7 +275,7 @@ def run_continual_learning():
     ray.shutdown()
     # results = [train_model(model_name, rotation_degrees, epochs_per_train)
     # for model_name in model_names]
-    save_results(results)
+    save_results(results, results_path='/home/users/MTrappett/mtrl/BranchGatingProject/data/results')
     print('Results saved')
 
 
