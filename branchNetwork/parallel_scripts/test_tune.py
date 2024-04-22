@@ -14,7 +14,8 @@ ray.init(address='auto')
 print(f'Ray gpus: {ray.get_gpu_ids()}')
 
 # @ray.remote
-def square(x):
+def square(config):
+    x = config['x']
     return x * x, os.getpid(), socket.gethostname()
 
 print(f'Ray cluster resources: {ray.cluster_resources()}')
