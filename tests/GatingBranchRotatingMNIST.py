@@ -14,6 +14,7 @@ from matplotlib.ticker import MaxNLocator
 import ray
 from collections import OrderedDict
 from typing import Callable, Union
+from pickle import dump
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
@@ -333,7 +334,10 @@ def process_and_plot_results(results):
         results_dictionary[result['model_name']] = result['data']
     plot_results(results_dictionary)
     
-    
+def save_results(results):
+    with open('/home/users/MTrappett/mtrl/BranchGatingProject/data/results/results.pkl', 'wb') as f:
+        dump(results, f)
+        
 def run_continual_learning():
     model_names = ['Masse', 'Simple', 'Branching', 'Expert']
     rotation_degrees = [0, 120, 240]
@@ -341,8 +345,10 @@ def run_continual_learning():
     ray.init(num_cpus=70)
     results = ray.get([train_model.remote(model_name, rotation_degrees, epochs_per_train) for model_name in model_names])
     ray.shutdown()
-    # results = [train_model(model_name, rotation_degrees, epochs_per_train) for model_name in model_names]
-    process_and_plot_results(results)
+    # results = [train_model(model_name, rotation_degrees, epochs_per_train)
+    # for model_name in model_names]
+    save_results(results)
+    # process_and_plot_results(results)
 
 
 
