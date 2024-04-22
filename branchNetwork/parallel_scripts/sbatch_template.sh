@@ -18,7 +18,7 @@
 
 #SBATCH --time=14-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
 #SBATCH --account=tau  ### Account used for job submission
-#SBATCH --mail-user=$onebonsai.warrior@gmail.com
+#SBATCH --mail-user=$mtrappet@uoregon.edu
 #SBATCH --mail-type=ALL
 
 
