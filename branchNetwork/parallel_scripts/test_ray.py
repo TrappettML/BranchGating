@@ -23,4 +23,4 @@ futures = [square.remote(i) for i in range(num_cpus_in_ray)]
 
 squares, pids, hostnames = [list(l) for l in zip(*ray.get(futures))]
 
-print(f'squares: {squares}\npids: {pids}\nhostnames: {hostnames}')
+print(f'squares: {squares}\npids: {set(pids)}, len: {len(set(pids))}\nhostnames: {set(hostnames)}, len: {len(set(hostnames))}')
