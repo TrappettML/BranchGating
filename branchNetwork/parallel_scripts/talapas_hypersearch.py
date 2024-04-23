@@ -17,7 +17,7 @@ import os
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
-DATA_DIR = '/home/MTrappett/BranchGating/branchNetwork/data/'
+DATA_DIR = '/home/mtrappet/BranchGating/branchNetwork/data/'
 
 def load_rotated_flattened_mnist_dataset(rotation_in_degrees=0, download=True, root='./data'):
     """
@@ -116,7 +116,7 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]], data: dict[str
 
 def run_tune():
     train_dataset, test_dataset = load_rotated_flattened_mnist_dataset(rotation_in_degrees=0)
-    data = {'train_loader': train_dataset, 'test_loader': test_dataset}
+    data = {'train_dataset': train_dataset, 'test_dataset': test_dataset}
     if not ray.is_initialized():
         ray.init(address='auto')
     tuner = tune.Tuner(
