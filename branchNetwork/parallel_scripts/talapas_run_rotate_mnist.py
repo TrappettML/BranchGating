@@ -3,7 +3,7 @@ import ray
 import os
 import socket
 
-from branchNetwork.GatingBranchRotatingMNIST import train_model, save_results
+from branchNetwork.tests.GatingBranchRotatingMNIST import train_model, save_results
 
 
 def run_continual_learning():
