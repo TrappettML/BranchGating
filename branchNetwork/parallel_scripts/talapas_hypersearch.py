@@ -81,7 +81,7 @@ def run_tune():
     if not ray.is_initialized():
         ray.init(address='auto')
     tuner = tune.Tuner(
-        tune.with_resources(train_and_evaluate_model, {"cpu": 1}),
+        tune.with_resources(train_and_evaluate_model, {"cpu": 2}),
         param_space={
             "model_name": tune.grid_search(MODEL_NAMES),
             "model_configs": MODEL_CONFIGS,

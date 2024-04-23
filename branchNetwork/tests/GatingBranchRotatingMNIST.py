@@ -7,7 +7,6 @@ from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from torch.utils.data import DataLoader
 from torch import nn
 from ipdb import set_trace
-from matplotlib.ticker import MaxNLocator
 import ray
 from collections import OrderedDict
 from typing import Callable, Union
@@ -20,8 +19,8 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        if i > 2:
-            break
+        # if i > 2:
+        #     break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -75,7 +74,7 @@ def parallel_eval_data(model, task, data_loader, criterion, device='cpu'):
             correct += correct_batch
             total_loss += loss_batch
         accuracy = 100 * correct / total
-    print(f'accuracy: {accuracy}; correct: {correct}; total: {total}')
+    # print(f'accuracy: {accuracy}; correct: {correct}; total: {total}')
     return accuracy, total_loss / len(data_loader)
 
 @ray.remote

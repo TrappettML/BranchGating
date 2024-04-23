@@ -9,7 +9,7 @@ from branchNetwork.tests.GatingBranchRotatingMNIST import train_model, save_resu
 def run_continual_learning():
     model_names = ['Masse', 'Simple', 'Branching', 'Expert']
     rotation_degrees = [0, 120, 240]
-    epochs_per_train = 3
+    epochs_per_train = 40
     ray.init(address='auto')
     results = ray.get([train_model.remote(model_name, rotation_degrees, epochs_per_train) for model_name in model_names])
     # results = [train_model(model_name, rotation_degrees, epochs_per_train)
