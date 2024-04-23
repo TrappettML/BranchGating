@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # User Files and Folders
-./data/
+./*/data/
 ./*/__pycache__/*/
 
 # Distribution / packaging
