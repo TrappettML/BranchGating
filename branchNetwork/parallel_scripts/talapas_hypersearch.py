@@ -14,6 +14,42 @@ from typing import Union
 from ipdb import set_trace
 import time
 import os
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
+DATA_DIR = '/home/MTrappett/BranchGating/branchNetwork/data/'
+
+def load_rotated_flattened_mnist_dataset(rotation_in_degrees=0, download=True, root='./data'):
+    """
+    Load the MNIST dataset with each image rotated by a fraction of pi radians and flattened.
+
+    Parameters:
+    - batch_size: The number of samples per batch to load.
+    - fraction_of_pi: The fraction of pi radians to rotate each image.
+    - download: Whether to download the dataset if not locally available.
+    - root: Directory where the dataset will be stored.
+
+    Returns:
+    - train_loader: DataLoader for the rotated and flattened training data.
+    - test_loader: DataLoader for the rotated and flattened test data.
+    """
+    # Convert fraction of pi radians to degrees
+    degrees = rotation_in_degrees
+
+    # Define the transformation: rotate, convert to tensor, normalize, and then flatten
+    transform = transforms.Compose([
+        transforms.RandomRotation(degrees=[degrees, degrees]),  # Apply the specified rotation
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
+        transforms.Lambda(lambda x: torch.flatten(x))  # Flatten the images
+    ])
+
+    # Load the training and test datasets with the specified transforms
+    train_dataset = datasets.MNIST(root=DATA_DIR, train=True, download=download, transform=transform)
+    test_dataset = datasets.MNIST(root=DATA_DIR, train=False, download=download, transform=transform)
+
+    return train_dataset, test_dataset
+
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
@@ -65,12 +101,13 @@ MODEL_CONFIGS = {'n_in': 784,
                      'sparsity': 0.8,
                      'dropout': 0.5,}
     
-def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
+def train_and_evaluate_model(configs: dict[str, Union[str, int]], data: dict[str, list]) -> float:
     model = MODEL_DICT[configs['model_name']](configs['model_configs'])
     optimizer = torch.optim.Adam(model.parameters(), lr=configs['lr'])
     criterion = nn.CrossEntropyLoss()
-    train_loader, test_loader = load_rotated_flattened_mnist_data(batch_size= configs['batch_size'],
-                                                                  rotation_in_degrees=configs['rotation_in_degrees'])
+    train_loader = torch.utils.data.DataLoader(data['train_dataset'], batch_size=configs['batch_size'], shuffle=True)
+    test_loader = torch.utils.data.DataLoader(data['test_dataset'], batch_size=configs['batch_size'], shuffle=False)
+    
     for epoch in range(configs['n_epochs']):
         train_epoch(model, train_loader, configs['rotation_in_degrees'], optimizer, criterion, device='cpu')
         accuracy, _ = evaluate_model(model, configs['rotation_in_degrees'], test_loader, criterion)
@@ -78,10 +115,12 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
     # return accuracy
 
 def run_tune():
+    train_dataset, test_dataset = load_rotated_flattened_mnist_dataset(rotation_in_degrees=0)
+    data = {'train_loader': train_dataset, 'test_loader': test_dataset}
     if not ray.is_initialized():
         ray.init(address='auto')
     tuner = tune.Tuner(
-        tune.with_resources(train_and_evaluate_model, {"cpu": 2}),
+        tune.with_parameters(tune.with_resources(train_and_evaluate_model, {"cpu": 3}), data=data),
         param_space={
             "model_name": tune.grid_search(MODEL_NAMES),
             "model_configs": MODEL_CONFIGS,
@@ -90,7 +129,7 @@ def run_tune():
             "n_epochs": 20,
             "rotation_in_degrees": 0,
         },
-        tune_config=tune.TuneConfig(num_samples=4, 
+        tune_config=tune.TuneConfig(num_samples=3, 
                                     metric="mean_accuracy", 
                                     mode="max"),
     )
