@@ -13,6 +13,7 @@ import pandas as pd
 from typing import Union
 from ipdb import set_trace
 import time
+import os
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
@@ -78,37 +79,38 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
 
 def run_tune():
     if not ray.is_initialized():
-        ray.init(num_cpus=120)
+        ray.init(address='auto')
     tuner = tune.Tuner(
         tune.with_resources(train_and_evaluate_model, {"cpu": 1}),
         param_space={
             "model_name": tune.grid_search(MODEL_NAMES),
             "model_configs": MODEL_CONFIGS,
             "lr": tune.grid_search([0.0001, 0.001, 0.01, 0.1 ]),
-            "batch_size": tune.grid_search([32, 64, 128, 512]),
+            "batch_size": tune.grid_search([32, 64, 128, 256]),
             "n_epochs": 20,
             "rotation_in_degrees": 0,
         },
-        tune_config=tune.TuneConfig(num_samples=5, 
+        tune_config=tune.TuneConfig(num_samples=4, 
                                     metric="mean_accuracy", 
                                     mode="max"),
     )
     results = tuner.fit()
-    ray.shutdown()
     print(f'Best result: {results.get_best_result()}')
     
     return results.get_dataframe()
 
-def process_results(results: pd.DataFrame):
-    results.to_pickle('/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/lr_bs_hyper_search_results.pkl')
-    print(f'Saved results to /home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/lr_bs_hyper_search_results.pkl')
+def process_results(results: pd.DataFrame, path_to_save: str):
+    if not os.path.exists(path_to_save):
+        os.makedirs(path_to_save)
+    results.to_pickle(f'{path_to_save}/lr_bs_hyper_search_results.pkl')
+    print(f'Saved results to {path_to_save}/lr_bs_hyper_search_results.pkl')
     
 def main():
     time_start = time.time()
     results = run_tune()
     elapsed_time = time.time() - time_start
     print(f'Elapsed time: {elapsed_time} seconds')
-    process_results(results)
+    process_results(results, "/home/MTrappett/BranchGating/branchNetwork/data/hyper_search/")
     
     
 if __name__ == "__main__":
