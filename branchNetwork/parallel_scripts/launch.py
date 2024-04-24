@@ -6,10 +6,15 @@ import argparse
 import subprocess
 import sys
 import time
+import socket
 
 from pathlib import Path
 
-template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/sbatch_template.sh'
+if 'talapas' in socket.gethostname():
+    template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/sbatch_template.sh'
+else:
+    template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/sbatch_template.sh'
+    
 print(template_file)
 print(f'Path(__file__): {Path(__file__)}')
 

@@ -17,6 +17,7 @@ import os
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
+
 DATA_DIR = '/home/mtrappet/BranchGating/branchNetwork/data/'
 
 def load_rotated_flattened_mnist_dataset(rotation_in_degrees=0, download=True, root='./data'):
@@ -105,8 +106,8 @@ def train_and_evaluate_model(configs: dict[str, Union[str, int]], data: dict[str
     model = MODEL_DICT[configs['model_name']](configs['model_configs'])
     optimizer = torch.optim.Adam(model.parameters(), lr=configs['lr'])
     criterion = nn.CrossEntropyLoss()
-    train_loader = torch.utils.data.DataLoader(data['train_dataset'], batch_size=configs['batch_size'], shuffle=True)
-    test_loader = torch.utils.data.DataLoader(data['test_dataset'], batch_size=configs['batch_size'], shuffle=False)
+    train_loader = DataLoader(data['train_dataset'], batch_size=configs['batch_size'], shuffle=True)
+    test_loader = DataLoader(data['test_dataset'], batch_size=configs['batch_size'], shuffle=False)
     
     for epoch in range(configs['n_epochs']):
         train_epoch(model, train_loader, configs['rotation_in_degrees'], optimizer, criterion, device='cpu')

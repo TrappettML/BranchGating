@@ -8,19 +8,46 @@ class ExpertModel(nn.Module):
             super(ExpertModel, self).__init__()
             self.seen_contexts = list()
             self.n_contexts = model_configs['n_contexts']
-            self.models = [SimpleModel(model_configs) for _ in range(model_configs['n_contexts'])]
-            self.current_model = self.models[0]
+            self.models = nn.ModuleList([SimpleModel(model_configs) for _ in range(model_configs['n_contexts'])])
+            self.current_model_index = 0
             
         def forward(self, x, context=0):
-            self.check_context(context)
-            return self.current_model(x)
+            if self.training:
+                return self.train_forward(x, context)
+            else:
+                return self.eval_forward(x, context)
+            
         
         def check_context(self, context):
             '''check if it is a new context, if it is, switch to that model'''
             if context not in self.seen_contexts:
                 self.seen_contexts.append(context)
                 assert len(self.seen_contexts) <= self.n_contexts, "Contexts are more than the specified number" 
-                self.current_model = self.models[self.seen_contexts.index(context)]
+            
+
+        def set_index(self, context):
+            if self.current_model_index != self.seen_contexts.index(context):
+                self.current_model_index = self.seen_contexts.index(context)
+                self.activate_training()
+                
+        def activate_training(self):
+            '''activate training for the current model'''
+            for param in self.models[self.current_model_index].parameters():
+                param.requires_grad = True
+            for i, model in enumerate(self.models):
+                if i != self.current_model_index:
+                    for param in model.parameters():
+                        param.requires_grad = False
+                        
+        def train_forward(self, x, context):
+            '''train forward pass'''
+            self.check_context(context)
+            self.set_index(context)
+            return self.models[self.current_model_index](x)
+        
+        def eval_forward(self, x, context):
+            self.check_context(context)
+            return self.models[self.seen_contexts.index(context)](x)
                 
 
     

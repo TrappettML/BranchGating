@@ -1,15 +1,17 @@
 
 import matplotlib.pyplot as plt
-import numpy as np
+import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
-from branchNetwork.simpleMLP import SimpleMLP
-
-import torch
+import socket
 
 
-DATA_DIR = '/home/users/MTrappett/mtrl/BranchGatingProject/data/'
+if 'talapas' in socket.gethostname():
+    DATA_DIR = '/home/users/MTrappett/mtrl/BranchGatingProject/data/'
+else:
+    DATA_DIR = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/'
+
 
 def load_mnist_data(batch_size=32, download=True):
     """
@@ -128,7 +130,9 @@ def main():
     print('Data saved')
     
 def test_load_rotated_flattened_mnist():
-    train_loader, test_loader = load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=120)
+    train_loader, test_loader = load_rotated_flattened_mnist_data(batch_size=128, rotation_in_degrees=120)
+    print(f'Length of train_loader: {len(train_loader)}')
+    print(f'Length of test_loader: {len(test_loader)}')
     for data, target in train_loader:
         print(data.shape)
         print(target.shape)

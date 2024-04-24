@@ -14,7 +14,7 @@ def run_continual_learning():
     results = ray.get([train_model.remote(model_name, rotation_degrees, epochs_per_train) for model_name in model_names])
     # results = [train_model(model_name, rotation_degrees, epochs_per_train)
     # for model_name in model_names]
-    save_results(results, results_path='/home/mtrappet/BranchGating/data/results')
+    save_results(results, results_path='/home/mtrappet/BranchGating/branchNetwork/data/results')
     print('Results saved')
     
 if __name__ == '__main__':
