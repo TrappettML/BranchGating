@@ -10,11 +10,15 @@ class ExpertModel(nn.Module):
             self.n_contexts = model_configs['n_contexts']
             self.models = nn.ModuleList([SimpleModel(model_configs) for _ in range(model_configs['n_contexts'])])
             self.current_model_index = 0
+            self.all_grads_false = False
+            self.activate_training()
             
         def forward(self, x, context=0):
             if self.training:
                 return self.train_forward(x, context)
             else:
+                if not self.all_grads_false:
+                    self.set_grads_to_false()
                 return self.eval_forward(x, context)
             
         
@@ -37,17 +41,26 @@ class ExpertModel(nn.Module):
             for i, model in enumerate(self.models):
                 if i != self.current_model_index:
                     for param in model.parameters():
-                        param.requires_grad = False
+                        param.requires_grad = False      
+            self.all_grads_false = False
                         
         def train_forward(self, x, context):
             '''train forward pass'''
             self.check_context(context)
             self.set_index(context)
+            if self.all_grads_false:
+                self.activate_training()
             return self.models[self.current_model_index](x)
         
         def eval_forward(self, x, context):
             self.check_context(context)
             return self.models[self.seen_contexts.index(context)](x)
+        
+        def set_grads_to_false(self):
+            for model in self.models:
+                for param in model.parameters():
+                    param.requires_grad = False
+            self.all_grads_false = True
                 
 
     

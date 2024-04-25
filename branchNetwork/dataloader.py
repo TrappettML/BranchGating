@@ -1,5 +1,4 @@
 
-import matplotlib.pyplot as plt
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
@@ -44,6 +43,7 @@ def load_mnist_data(batch_size=32, download=True):
 
 
 def show_and_save_rotated_mnist_examples(rotation_angles):
+    import matplotlib.pyplot as plt
     """
     Load MNIST data, find one example of each digit, show and save the figure,
     with each row showing the digits rotated by the corresponding angle in rotation_angles.

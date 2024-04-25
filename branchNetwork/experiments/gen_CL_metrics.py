@@ -25,6 +25,7 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     for i, (images, labels) in enumerate(data_loader):
         # if i > 2:
         #     break
+        # set_trace()
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -41,8 +42,9 @@ def evaluate_model(model, task, data_loader, criterion, device='cpu'):
     total_loss = 0
     with torch.no_grad():
         for i, (images, labels) in enumerate(data_loader):
-            # if i>10:
-            #     break
+            if i>2:
+                break
+            set_trace()
             images, labels = images.to(device), labels.to(device)
             outputs = model(images, task)
             loss = criterion(outputs, labels)
@@ -112,7 +114,7 @@ def single_task(model:nn.Module,
                 epochs: int,
                 model_aggregated_results: OrderedDict['str', Union[str, list[float]]], 
                 device:str = 'cpu'):
-    model.train()
+    # model.train()
     print(f'begining training for task {train_task} on model: {model_aggregated_results["model_name"]}')
     for epoch in range(epochs):
         train_losses = train_epoch(model, train_loader, train_task, optimizer, criterion, device=device)
@@ -177,10 +179,10 @@ def save_results(results, results_path, filename):
 
 @timing_decorator
 def run_continual_learning():
-    # MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
-    # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
-    MODEL_CLASSES = [ExpertModel]
-    MODEL_NAMES = ['ExpertModel']
+    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
+    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    # MODEL_CLASSES = [ExpertModel]
+    # MODEL_NAMES = ['ExpertModel']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': 32,
                     'epochs_per_train': 10,
