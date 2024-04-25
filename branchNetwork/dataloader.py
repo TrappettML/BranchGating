@@ -7,7 +7,7 @@ import socket
 
 
 if 'talapas' in socket.gethostname():
-    DATA_DIR = '/home/users/MTrappett/mtrl/BranchGatingProject/data/'
+    DATA_DIR = '/home/mtrappet/BranchGating/branchNetwork/data/'
 else:
     DATA_DIR = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/'
 
