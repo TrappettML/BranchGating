@@ -89,7 +89,7 @@ def run_tune():
             "n_epochs": 20,
             "rotation_in_degrees": 0,
         },
-        tune_config=tune.TuneConfig(num_samples=5, 
+        tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="mean_accuracy", 
                                     mode="max"),
     )

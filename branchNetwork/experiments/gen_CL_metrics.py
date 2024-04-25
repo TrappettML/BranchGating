@@ -185,7 +185,7 @@ def run_continual_learning():
     # MODEL_NAMES = ['ExpertModel']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': 32,
-                    'epochs_per_train': 10,
+                    'epochs_per_train': 20,
                     'rotation_degrees': [0, 180],}
     
     MODEL_CONFIGS = {'n_in': 784, 
