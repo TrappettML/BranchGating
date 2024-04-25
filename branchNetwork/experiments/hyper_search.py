@@ -13,6 +13,7 @@ import pandas as pd
 from typing import Union
 from ipdb import set_trace
 import time
+import os
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
@@ -100,8 +101,10 @@ def run_tune():
     return results.get_dataframe()
 
 def process_results(results: pd.DataFrame):
-    results.to_pickle('/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/lr_bs_hyper_search_results.pkl')
-    print(f'Saved results to /home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/lr_bs_hyper_search_results.pkl')
+    if not os.path.exists('/home/mtrappet/BranchGating/branchNetwork/data/results/hyper_search/'):
+        os.makedirs('/home/mtrappet/BranchGating/branchNetwork/data/results/hyper_search/')
+    results.to_pickle('/home/mtrappet/BranchGating/branchNetwork/data/results/hyper_search/lr_bs_hyper_search_results.pkl')
+    print(f'Saved results to /home/mtrappet/BranchGating/branchNetwork/data/results/hyper_search/lr_bs_hyper_search_results.pkl')
     
 def main():
     time_start = time.time()
