@@ -60,6 +60,9 @@ class ExpertModel(nn.Module):
             for model in self.models:
                 for param in model.parameters():
                     param.requires_grad = False
+                    if param.grad is not None:
+                        param.grad.detach_()
+                        param.grad.zero_()
             self.all_grads_false = True
                 
 
