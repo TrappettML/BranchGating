@@ -34,7 +34,7 @@ def run_tune():
             "n_b_2": tune.grid_search(layer_2_branches),
             "lr": 0.001,
             "batch_size": 32,
-            "epochs_per_task": 10,
+            "epochs_per_task": 20,
             "rotation_in_degrees": [0,180],
         },
         tune_config=tune.TuneConfig(num_samples=1, 
