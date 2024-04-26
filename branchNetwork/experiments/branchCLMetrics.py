@@ -191,13 +191,13 @@ def save_results(results, results_path, filename):
 
 @timing_decorator
 def run_continual_learning():
-    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
-    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
-    # MODEL_CLASSES = [ExpertModel]
-    # MODEL_NAMES = ['ExpertModel']
+    # MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
+    # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    MODEL_CLASSES = [BranchModel]
+    MODEL_NAMES = ['BranchModel']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': 32,
-                    'epochs_per_train': 10,
+                    'epochs_per_train': 2,
                     'rotation_degrees': [0, 180],}
     
     MODEL_CONFIGS = {'n_in': 784, 
