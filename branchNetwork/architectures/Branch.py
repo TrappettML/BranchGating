@@ -15,7 +15,7 @@ class BranchModel(nn.Module):
             self.layer_1 = BranchLayer(model_configs['n_in'],
                                       model_configs['n_npb'][0],
                                        model_configs['n_branches'][0],
-                                       2000,
+                                       2000, # number of next layer's inputs
                                        device=model_configs['device'])
             self.gating_1 = BranchGatingActFunc(2000,
                                                 model_configs['n_branches'][0],
