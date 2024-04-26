@@ -18,10 +18,10 @@ import os
 
 
 def run_tune():
-    # layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
-    # layer_2_branches = [1,2,5,10,20,50,100,200,500,1000,2000]
-    layer_1_branches = [1,2]
-    layer_2_branches = [1,2]
+    layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
+    layer_2_branches = [1,2,5,10,20,50,100,200,500,1000,2000]
+    # layer_1_branches = [1,2]
+    # layer_2_branches = [1,2]
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
@@ -34,7 +34,7 @@ def run_tune():
             "n_b_2": tune.grid_search(layer_2_branches),
             "lr": 0.001,
             "batch_size": 32,
-            "epochs_per_task": 20,
+            "epochs_per_task": 10,
             "rotation_in_degrees": [0,180],
         },
         tune_config=tune.TuneConfig(num_samples=1, 
@@ -62,6 +62,7 @@ def main():
     elapsed_time = time.time() - time_start
     print(f'Elapsed time: {elapsed_time} seconds')
     process_results(results, 'branch_search_results')
+    print(f'_____Finsihed_____')
     
     
 if __name__ == "__main__":
