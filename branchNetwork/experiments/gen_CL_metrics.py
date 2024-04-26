@@ -158,7 +158,8 @@ def make_data_container(rotation_degrees: list[int], model_name: str):
 def train_model(model_name: str,
                 train_config: dict[str, Union[int, list[int]]],
                 model_dict: dict[str, Callable] = None,
-                model_configs: dict[str, Union[int, float, list[int]]] = None):
+                model_configs: dict[str, Union[int, float, list[int]]] = None,
+                device: str = 'cpu'):
 
     model, optimizer, criterion = setup_model(model_name, model_configs=model_configs, model_dict=model_dict)
     train_loaders, test_loaders = setup_loaders(train_config['rotation_degrees'], train_config['batch_size'])

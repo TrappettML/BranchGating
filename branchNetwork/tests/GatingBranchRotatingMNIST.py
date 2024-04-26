@@ -1,9 +1,15 @@
 
 import torch
+from branchNetwork.architectures.Branch import BranchModel
+from branchNetwork.architectures.Expert import ExpertModel
+from branchNetwork.architectures.Masse import MasseModel
+from branchNetwork.architectures.Simple import SimpleModel
 from branchNetwork.simpleMLP import SimpleMLP
 from branchNetwork.BranchLayer import BranchLayer
 from branchNetwork.gatingActFunction import BranchGatingActFunc
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
+from branchNetwork.utils.timing import timing_decorator
+
 from torch.utils.data import DataLoader
 from torch import nn
 from ipdb import set_trace
@@ -19,8 +25,8 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        # if i > 2:
-        #     break
+        if i > 2:
+            break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -68,7 +74,7 @@ def parallel_eval_data(model, task, data_loader, criterion, device='cpu'):
     correct, total = 0, 0
     total_loss = 0
     with torch.no_grad():
-        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader)]) # if i < 3
+        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader) if i < 3]) # if i < 3
         for correct_batch, loss_batch, total_batch in results:
             total += total_batch
             correct += correct_batch
@@ -116,144 +122,52 @@ def single_task(model:nn.Module,
         merge_results_for_model(model_aggregated_results, train_losses, test_results, train_task)
     return model_aggregated_results
 
-def setup_expert(model_configs: dict[str, Union[int, list[int], dict[str, int], str]]):
-    class ExpertMLP(SimpleMLP):
-        def __init__(self):
-            super(ExpertMLP, self).__init__(model_configs['n_in'], 
-                      model_configs['hidden_layers'], 
-                      model_configs['n_out'],)
-            self.seen_contexts = list()
-            self.n_contexts = model_configs['n_contexts']
-            self.models = [setup_simple(model_configs) for _ in range(model_configs['n_contexts'])]
-            self.current_model = self.models[0]
-            
-        def forward(self, x, context=0):
-            self.check_context(context)
-            return self.current_model(x)
-        
-        def check_context(self, context):
-            '''check if it is a new context, if it is, switch to that model'''
-            if context not in self.seen_contexts:
-                self.seen_contexts.append(context)
-                assert len(self.seen_contexts) <= self.n_contexts, "Contexts are more than the specified number" 
-                self.current_model = self.models[self.seen_contexts.index(context)]
-                
-    return ExpertMLP()
-            
-def setup_masse(model_configs: dict[str, Union[int, list[int], dict[str, int], str]]):
-    class MasseMLP(nn.Module):
-        def __init__(self):
-            super(MasseMLP, self).__init__()
-            self.layer_0 = SimpleMLP(model_configs['n_in'],
-                                     [],
-                                     2000)
-            self.layer_1 = BranchLayer(2000, 
-                                       2000, 
-                                       1, 
-                                       2000,
-                                       model_configs['device'])
-            self.layer_2 = BranchLayer(2000,
-                                       2000,
-                                       1,
-                                       model_configs['n_out'],
-                                       device=model_configs['device'])
-            self.gating_1 = BranchGatingActFunc(2000,
-                                                1,
-                                                model_configs['n_contexts'],
-                                                0.8)
-            self.gating_2 = BranchGatingActFunc(2000,
-                                                1,
-                                                model_configs['n_contexts'],
-                                                0.8)
-            self.act_func = nn.ReLU()   
-                    
-        def forward(self, x, context=0):
-            x = self.act_func(self.gating_1(self.layer_0(x), context))
-            x = self.act_func(self.gating_2(self.layer_1(x), context))
-            return self.layer_2(x)
-        
-    return MasseMLP()
-
-def setup_branching(model_configs: dict[str, Union[int, list[int], dict[str, int], str]]):
-    class BranchMLP(nn.Module):
-        '''We want the same number of weights for each layer as Masse has.
-        layer 1 is 784x2000, layer2 is 2000x2000, layer3 is 2000x10'''
-        def __init__(self):
-            super(BranchMLP, self).__init__()
-            self.layer_1 = SimpleMLP(model_configs['n_in'],
-                                     [], 2000)
-            self.layer_2 = BranchLayer(2000,
-                                      200,
-                                       10,
-                                       2000,
-                                       device=model_configs['device'])
-            self.layer_3 = SimpleMLP(2000,[], 10)
-            self.gating_1 = BranchGatingActFunc(2000,
-                                                10,
-                                                model_configs['n_contexts'],
-                                                0.8)
-            # self.gating_2 = BranchGatingActFunc(model_configs['n_next_h'],
-            #                                     model_configs['n_branches'],
-            #                                     model_configs['n_contexts'],
-            #                                     0.8)
-            self.act_func = nn.ReLU()           
-        def forward(self, x, context=0):
-            x = self.act_func(self.layer_1(x))
-            x = self.act_func(self.gating_1(self.layer_2(x), context))
-            return self.layer_3(x)
-    return BranchMLP()
-
-def setup_simple(model_configs: dict[str, Union[int, list[int], dict[str, int], str]]):
-    model = SimpleMLP(model_configs['n_in'], 
-                      model_configs['hidden_layers'], 
-                      model_configs['n_out'],)
-    return model
-
 def setup_model(model_name: str, 
-                model_configs: dict[str, Union[int, list[int], dict[str, int], str]]):
-    if model_name == 'Masse':
-        model = setup_masse(model_configs)
-    elif model_name == 'Simple':
-        model = setup_simple(model_configs)
-    elif model_name == 'Branching':
-        model = setup_branching(model_configs)
-    elif model_name == 'Expert':
-        model = setup_expert(model_configs)
-    optim = torch.optim.Adam(model.parameters(), lr=0.001)
+                model_configs: dict[str, Union[int, list[int], dict[str, int], str]], 
+                model_dict: Union[None, dict[str, Callable]]):
+    
+    assert model_name in model_dict.keys(), f'{model_name} not in model_dict'
+    model = model_dict[model_name](model_configs)   
+    optim = torch.optim.Adam(model.parameters(), lr=model_configs['lr'])
     criterion = nn.CrossEntropyLoss()
     return model, optim, criterion
 
-
-def setup_loaders(rotation_degrees):
+def setup_loaders(rotation_degrees: list[int], batch_size: int):
     train_loaders = dict()
     test_loaders = dict()
     for degree in rotation_degrees:
-        test_loader, train_loader = load_rotated_flattened_mnist_data(32, degree)
+        test_loader, train_loader = load_rotated_flattened_mnist_data(batch_size, degree)
         train_loaders[degree] = train_loader
         test_loaders[degree] = test_loader
     return train_loaders, test_loaders
 
+def make_data_container(rotation_degrees: list[int], model_name: str):
+    keys = ['model_name', 'Training_Loss']
+    for deg in rotation_degrees:
+        keys.extend([f'd{deg}_loss', f'd{deg}_Accuracy'])
+
+    values = [model_name, []]
+    for _ in rotation_degrees:
+        values.extend([[], []])  
+        
+    model_data = OrderedDict(zip(keys, values))
+    return model_data
+
+@timing_decorator
 @ray.remote
 def train_model(model_name: str,
-                rotation_degrees: list[int], 
-                epochs: int,
+                train_config: dict[str, Union[int, list[int]]],
+                model_dict: dict[str, Callable] = None,
+                model_configs: dict[str, Union[int, float, list[int]]] = None,
                 device: str = 'cpu'):
-    model_config = dict(
-        n_in=784,
-        hidden_layers=[2000, 2000],
-        n_out=10,
-        device='cpu',
-        n_contexts=3,
-    )
-    model, optimizer, criterion = setup_model(model_name, model_configs=model_config)
-    train_loaders, test_loaders = setup_loaders(rotation_degrees)
+
+    model, optimizer, criterion = setup_model(model_name, model_configs=model_configs, model_dict=model_dict)
+    train_loaders, test_loaders = setup_loaders(train_config['rotation_degrees'], train_config['batch_size'])
     
-    model_data = OrderedDict(zip(['model_name','Training_Loss', f'd{rotation_degrees[0]}_loss', 
-                                  f'd{rotation_degrees[1]}_loss',f'd{rotation_degrees[2]}_loss',
-                                  f'd{rotation_degrees[0]}_Accuracy',f'd{rotation_degrees[1]}_Accuracy',
-                                  f'd{rotation_degrees[2]}_Accuracy',], [model_name, [], [], [], [], [], [], []]))
+    model_data = make_data_container(train_config["rotation_degrees"], model_name)
+
     for task_name, task_loader in train_loaders.items():
-        single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, epochs, 
+        single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, train_config['epochs_per_train'], 
                     model_data, device=device)
     return {'model_name': model_name, 'data': model_data}
 
@@ -262,19 +176,37 @@ def save_results(results, results_path):
     if not os.path.exists(results_path):
         os.makedirs(results_path)
         
-    with open(f'{results_path}/results.pkl', 'wb') as f:
+    with open(f'{results_path}/3task_results.pkl', 'wb') as f:
         dump(results, f)
         
+@timing_decorator
 def run_continual_learning():
-    model_names = ['Masse', 'Simple', 'Branching', 'Expert']
-    rotation_degrees = [0, 120, 240]
-    epochs_per_train = 3
-    ray.init(num_cpus=70)
-    results = ray.get([train_model.remote(model_name, rotation_degrees, epochs_per_train) for model_name in model_names])
+    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
+    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
+    TRAIN_CONFIGS = {'batch_size': 32,
+                    'epochs_per_train': 2,
+                    'rotation_degrees': [0, 180],}
+    
+    MODEL_CONFIGS = {'n_in': 784, 
+                    'n_out': 10, 
+                    'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
+                    'device': 'cpu', 
+                    'n_npb': [56, 200], 
+                    'n_branches': [14, 10], 
+                    'sparsity': 0.8,
+                    'dropout': 0.5,
+                    'hidden_layers': [2000, 2000],
+                    'lr': 0.001,
+                    }
+    
+    if not ray.is_initialized():
+        ray.init(num_cpus=70)
+    results = ray.get([train_model.remote(model_name, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS) for model_name in MODEL_NAMES])
     ray.shutdown()
     # results = [train_model(model_name, rotation_degrees, epochs_per_train)
     # for model_name in model_names]
-    save_results(results, results_path='/home/users/MTrappett/mtrl/BranchGatingProject/data/results')
+    save_results(results, results_path='/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/results')
     print('Results saved')
 
 
