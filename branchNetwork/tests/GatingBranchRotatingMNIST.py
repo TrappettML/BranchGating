@@ -25,8 +25,8 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        if i > 2:
-            break
+        # if i > 2:
+        #     break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -74,7 +74,7 @@ def parallel_eval_data(model, task, data_loader, criterion, device='cpu'):
     correct, total = 0, 0
     total_loss = 0
     with torch.no_grad():
-        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader) if i < 3]) # if i < 3
+        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader)]) # if i < 3
         for correct_batch, loss_batch, total_batch in results:
             total += total_batch
             correct += correct_batch
