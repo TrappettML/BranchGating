@@ -32,7 +32,8 @@ def run_tune():
         param_space={
             "n_b_1": tune.grid_search(layer_1_branches),
             "n_b_2": tune.grid_search(layer_2_branches),
-            "lr": 0.001,
+            "n_repeat": tune.grid_search([1,2,3,4,5]),
+            "lr": 0.0001,
             "batch_size": 32,
             "epochs_per_task": 20,
             "rotation_in_degrees": [0,180],
