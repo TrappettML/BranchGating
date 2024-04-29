@@ -14,8 +14,8 @@ def run_continual_learning():
     MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': 32,
-                    'epochs_per_train': 2,
-                    'rotation_degrees': [0, 180],}
+                    'epochs_per_train': 20,
+                    'rotation_degrees': [0, 120, 240],}
     
     MODEL_CONFIGS = {'n_in': 784, 
                     'n_out': 10, 
@@ -26,7 +26,7 @@ def run_continual_learning():
                     'sparsity': 0.8,
                     'dropout': 0.5,
                     'hidden_layers': [2000, 2000],
-                    'lr': 0.001,
+                    'lr': 0.0001,
                     }
     ray.init(address='auto')
     results = ray.get([train_model.remote(model_name, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS) for model_name in MODEL_NAMES])
