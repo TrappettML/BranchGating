@@ -1,8 +1,5 @@
 
 from branchNetwork.experiments.branchCLMetrics import run_continual_learning
-from branchNetwork.dataloader import load_rotated_flattened_mnist_data
-
-
 
 import torch
 import torch.nn as nn

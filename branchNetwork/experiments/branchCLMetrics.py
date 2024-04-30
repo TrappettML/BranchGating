@@ -228,10 +228,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     return {'remembering': remembering, 'forward_transfer': forward_transfer}
-    # results = [train_model(model_name, rotation_degrees, epochs_per_task)
-    # for model_name in model_names]
-    # save_results(results, results_path='/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/results', filename='demo_CL_metrics_results')
-    # print('Results saved')
+
 
 
 
