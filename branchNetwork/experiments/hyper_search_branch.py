@@ -25,7 +25,7 @@ def run_tune():
         else:
             ray.init(num_cpus=70)
     tuner = tune.Tuner(
-        tune.with_resources(run_continual_learning, {"cpu": 2}),
+        tune.with_resources(run_continual_learning, {"cpu": 1}),
         param_space={
             "n_b_1": tune.grid_search(layer_1_branches),
             "n_b_2": tune.grid_search(layer_2_branches),
