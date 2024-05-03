@@ -12,6 +12,7 @@ from ipdb import set_trace
 import time
 import socket
 import os
+os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 
 
 def run_tune():
