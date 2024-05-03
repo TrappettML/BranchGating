@@ -15,7 +15,7 @@ import os
 
 
 def run_tune():
-    layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
+    # layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
     layer_2_branches = [1,2,5,10,20,50,100,200,500,1000,2000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
@@ -27,7 +27,7 @@ def run_tune():
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
         param_space={
-            "n_b_1": tune.grid_search(layer_1_branches),
+            "n_b_1": 14, # tune.grid_search(layer_1_branches),
             "n_b_2": tune.grid_search(layer_2_branches),
             "n_repeat": tune.grid_search([1,2,3,4,5]),
             "lr": 0.0001,

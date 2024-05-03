@@ -75,12 +75,12 @@ def plot_results(results_dictionary: dict[str, OrderedDict]):
                     'Validation Loss for Task 1', 
                     'Validation Loss for Task 2', 
                     'Validation Loss for Task 3']
-    results_indices = [1,2,3,4]
+    results_indices = [1,2,4,6]
     make_plot(results_dictionary, subfig_labels, results_indices, 'Comparison of all losses during training and evaluation', 'loss_plot', 'Loss')
     
     subfig_labels = ['Training Loss',
                     'Validation Accuracy for Task 1', 
                     'Validation Accuracy for Task 2', 
                     'Validation Accuracy for Task 3']
-    results_indices = [1,5,6,7]
+    results_indices = [1,3,5,7]
     make_plot(results_dictionary, subfig_labels, results_indices,'Comparison of evaluation accuracy after training', 'accuracy_plot', 'Accuracy')
