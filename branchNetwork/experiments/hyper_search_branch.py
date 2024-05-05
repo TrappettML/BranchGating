@@ -16,24 +16,25 @@ os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 
 
 def run_tune():
-    # layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
+    layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
     layer_2_branches = [1,2,5,10,20,50,100,200,500,1000,2000]
+    # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
         else:
-            ray.init(num_cpus=70)
+            ray.init(num_cpus=10)
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
         param_space={
-            "n_b_1": 14, # tune.grid_search(layer_1_branches),
+            "n_b_1": tune.grid_search(layer_1_branches),
             "n_b_2": tune.grid_search(layer_2_branches),
             "n_repeat": tune.grid_search([1,2,3,4,5]),
             "lr": 0.0001,
             "batch_size": 32,
-            "epochs_per_task": 20,
+            "epochs_per_task": 10,
             "rotation_in_degrees": [0,180],
         },
         tune_config=tune.TuneConfig(num_samples=1, 
