@@ -103,9 +103,9 @@ def calc_remembering(A_acc_1: float, A_acc_2: float) -> float:
 
 def calc_forward_transfer(B_acc_0: float, B_acc_1: float) -> float:
     """FT = (B_acc_0 - B_acc_1)/ (B_acc_0 + B_acc_1)
-        This will yield a value between -1 and 1. if the value is negative than thre was negative interference.
+        This will yield a value between -1 and 1. if the value is negative than negative interference.
         if positive than forward transfer of information."""
-    return (B_acc_0 - B_acc_1)/ (B_acc_0 + B_acc_1)
+    return (B_acc_1 - B_acc_0)/ (B_acc_0 + B_acc_1)
 
     
 def gather_task_accuracies(all_test_results: dict[str, list[float]], test_results: list[dict[int, tuple[float, float]]]) -> list[float]:
@@ -152,18 +152,6 @@ def setup_loaders(rotation_degrees: list[int], batch_size: int):
         test_loaders[degree] = test_loader
     return train_loaders, test_loaders
 
-def make_data_container(rotation_degrees: list[int], model_name: str):
-    keys = ['model_name', 'Training_Loss']
-    for deg in rotation_degrees:
-        keys.extend([f'd{deg}_loss', f'd{deg}_Accuracy'])
-
-    values = [model_name, []]
-    for _ in rotation_degrees:
-        values.extend([[], []])  
-        
-    model_data = OrderedDict(zip(keys, values))
-    return model_data
-
 # @timing_decorator
 # @ray.remote
 def train_model(model_name: str,
@@ -174,7 +162,6 @@ def train_model(model_name: str,
     model, optimizer, criterion = setup_model(model_name, model_configs=model_configs, model_dict=model_dict)
     train_loaders, test_loaders = setup_loaders(train_config['rotation_degrees'], train_config['batch_size'])
     
-    # model_data = make_data_container(train_config["rotation_degrees"], model_name)
     all_task_eval_accuracies = {}
     for task_name, task_loader in train_loaders.items():
         task_accuracies = single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, train_config['epochs_per_task'], device='cpu')
@@ -200,9 +187,9 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
     epochs_per_task = configs['epochs_per_task']
     batch_size = configs['batch_size']
-    
-    MODEL_CLASSES = [BranchModel]
-    MODEL_NAMES = ['BranchModel']
+    MODEL = configs['model_name']
+    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
+    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
@@ -223,7 +210,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
         ray.init(num_cpus=70)
     # results = ray.get([train_model.remote(model_name, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS) for model_name in MODEL_NAMES])
 
-    all_task_accuracies = train_model('BranchModel', TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
+    all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
     remembering, forward_transfer = process_task_accuracies(all_task_accuracies, epochs_per_task, rotations)
     train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')

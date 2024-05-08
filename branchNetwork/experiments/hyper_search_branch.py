@@ -16,6 +16,9 @@ os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 
 
 def run_tune():
+    # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
+    MODEL_NAMES = ['BranchModel']
     layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
     layer_2_branches = [1,2,5,10,20,50,100,200,500,1000,2000]
     # layer_2_branches = [2, 10, 500, 1000]
@@ -25,21 +28,23 @@ def run_tune():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
         else:
-            ray.init(num_cpus=10)
+            ray.init(num_cpus=20)
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
         param_space={
-            "n_b_1": tune.grid_search(layer_1_branches),
-            "n_b_2": tune.grid_search(layer_2_branches),
+            "model_name": tune.grid_search(MODEL_NAMES),
+            "n_b_1": tune.grid_search(layer_1_branches), # 14, # 
+            "n_b_2":  tune.grid_search(layer_2_branches), # 20, #
             "n_repeat": tune.grid_search([1,2,3,4,5]),
             "lr": 0.0001,
             "batch_size": 32,
-            "epochs_per_task": 10,
+            "epochs_per_task": 20,
             "rotation_in_degrees": [0,180],
         },
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="remembering", 
                                     mode="max"),
+        run_config=train.RunConfig(name='benchmark_run')
     )
     results = tuner.fit()
     ray.shutdown()
