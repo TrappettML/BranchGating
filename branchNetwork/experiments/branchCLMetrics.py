@@ -182,8 +182,8 @@ def get_n_npb(n_brances, n_in):
     return int(n_in/n_brances)
 
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
-    n_b_1 = configs['n_b_1']
-    n_b_2 = configs['n_b_2']
+    n_b_1 =  configs['n_b_1'] if 'n_b_1' in configs.keys() else 14
+    n_b_2 = configs['n_b_2'] if 'n_b_2' in configs.keys() else 20
     rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
     epochs_per_task = configs['epochs_per_task']
     batch_size = configs['batch_size']

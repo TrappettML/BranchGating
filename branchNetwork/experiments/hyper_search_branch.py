@@ -24,6 +24,7 @@ def run_tune():
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
+    repeats = 10
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
@@ -35,16 +36,16 @@ def run_tune():
             "model_name": tune.grid_search(MODEL_NAMES),
             "n_b_1": tune.grid_search(layer_1_branches), # 14, # 
             "n_b_2":  tune.grid_search(layer_2_branches), # 20, #
-            "n_repeat": tune.grid_search([1,2,3,4,5]),
+            "n_repeat": tune.grid_search([i for i in range(repeats)]),
             "lr": 0.0001,
             "batch_size": 32,
             "epochs_per_task": 20,
-            "rotation_in_degrees": [0,180],
+            "rotation_in_degrees": [0],
         },
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="remembering", 
                                     mode="max"),
-        run_config=train.RunConfig(name='benchmark_run')
+        run_config=train.RunConfig(name='branch_search_')
     )
     results = tuner.fit()
     ray.shutdown()

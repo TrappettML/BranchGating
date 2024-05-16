@@ -3,6 +3,7 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
+
 import socket
 
 
@@ -49,7 +50,7 @@ def show_and_save_rotated_mnist_examples(rotation_angles):
     with each row showing the digits rotated by the corresponding angle in rotation_angles.
     """
     transform = transforms.Compose([transforms.ToTensor()])
-    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    train_dataset = datasets.MNIST(root=DATA_DIR, train=True, download=True, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True)
     
     # Find one example of each digit
@@ -89,7 +90,7 @@ def rotate_image(image, angle):
     return rotate(image.numpy(), angle, reshape=False)
 
 
-def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, download=True, root='./data'):
+def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, download=True, root=DATA_DIR):
     """
     Load the MNIST dataset with each image rotated by a fraction of pi radians and flattened.
 
@@ -125,8 +126,105 @@ def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, down
     return train_loader, test_loader
 
 
+def load_permuted_flattened_mnist_data(batch_size=32, permute_seed=42, download=True, root=DATA_DIR):
+    import numpy as np
+    """
+    Load the MNIST dataset with each image's pixels permuted according to a given seed and flattened.
+
+    Parameters:
+    - batch_size: The number of samples per batch to load.
+    - permute_seed: Seed used to generate a consistent permutation of the pixels.
+    - download: Whether to download the dataset if not locally available.
+    - root: Directory where the dataset will be stored.
+
+    Returns:
+    - train_loader: DataLoader for the permuted and flattened training data.
+    - test_loader: DataLoader for the permuted and flattened test data.
+    """
+
+    # Define transformation pipeline
+    if permute_seed is not None:
+        # Set the random seed for reproducibility of the permutation
+        np.random.seed(permute_seed)
+        idx = torch.from_numpy(np.random.permutation(28 * 28))  # Create a permutation of the 784 pixel indices
+        
+        # Define the transformation with permutation
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.view(-1)[idx].view(1, 28, 28)),  # Permute the pixels
+            transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
+            transforms.Lambda(lambda x: torch.flatten(x))  # Flatten the images
+        ])
+    else:
+        # Define the transformation without permutation
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
+            transforms.Lambda(lambda x: torch.flatten(x))  # Flatten the images
+        ])
+
+    # Load the training and test datasets with the specified transforms
+    train_dataset = datasets.MNIST(root=root, train=True, download=download, transform=transform)
+    test_dataset = datasets.MNIST(root=root, train=False, download=download, transform=transform)
+
+    # Create data loaders for the training and test sets
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, test_loader
+
+
+def plot_permuted_mnist_by_seeds(seeds, root=DATA_DIR, save_path='permuted_mnist.png'):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    # Define a basic transform to convert image data to tensor
+    transform = transforms.Compose([transforms.ToTensor()])
+
+    # Load the MNIST dataset
+    dataset = datasets.MNIST(root=root, train=True, download=True, transform=transform)
+
+    # Prepare a figure to hold the subplots
+    fig, axes = plt.subplots(nrows=len(seeds), ncols=10, figsize=(15, 1.5 * len(seeds)))
+    if len(seeds) == 1:
+        axes = np.expand_dims(axes, 0)  # Handle the case of a single row
+
+    # Collect one example of each digit
+    examples = {i: None for i in range(10)}
+    for image, label in dataset:
+        if examples[label] is None:
+            examples[label] = image
+        if all(ex is not None for ex in examples.values()):
+            break
+
+    # Plot each permuted set of images
+    for row_idx, seed in enumerate(seeds):
+        if seed is not None:
+            np.random.seed(seed)
+            idx = np.random.permutation(28 * 28)
+        else:
+            idx = np.arange(28 * 28)
+
+        for digit, image in examples.items():
+            if seed is not None:
+                # Permute the image pixels based on the seed
+                permuted_image = image.view(-1)[torch.tensor(idx)].view(1, 28, 28)
+            else:
+                permuted_image = image
+
+            ax = axes[row_idx, digit]
+            ax.imshow(permuted_image.numpy().squeeze(), cmap='gray')
+            ax.set_title(f"Seed {seed} - Digit {digit}")
+            ax.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
 def main():
-    show_and_save_rotated_mnist_examples([0, 120, 180, 240])
+    # show_and_save_rotated_mnist_examples([0, 120, 180, 240])
+    # print('Data saved')
+    seeds = [None, 42, 123, 456]
+    plot_permuted_mnist_by_seeds(seeds)
     print('Data saved')
     
 def test_load_rotated_flattened_mnist():
@@ -145,5 +243,24 @@ def test_load_rotated_flattened_mnist():
 
     print('Data loaded successfully')
 
+def test_load_permuted_flattened_mnist():
+    train_loader, test_loader = load_permuted_flattened_mnist_data(batch_size=128, permute_seed=42)
+    print(f'Length of train_loader: {len(train_loader)}')
+    print(f'Length of test_loader: {len(test_loader)}')
+    for data, target in train_loader:
+        print(data.shape)
+        print(target.shape)
+        break
+
+    for data, target in test_loader:
+        print(data.shape)
+        print(target.shape)
+        break
+
+    print('Data loaded successfully')
+    
+    
 if __name__=='__main__':
-    test_load_rotated_flattened_mnist()
+    # test_load_rotated_flattened_mnist()
+    test_load_permuted_flattened_mnist()
+    main()
