@@ -10,10 +10,10 @@ def test_basic_forwards():
     n_batches = 10
     n_in = 784
     n_out = 10
-    hidden_layers = [2000, 2000]
+    hidden_layers = [784, 784]
     n_contexts = 2
-    n_npb = 200
-    n_branches = 10
+    n_npb = 56
+    n_branches = 14
     sparsity = 0.8
     model_configs = {'n_in': n_in, 
                      'n_out': n_out, 

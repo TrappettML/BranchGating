@@ -93,6 +93,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="mean_accuracy", 
                                     mode="max"),
+        run_config=train.RunConfig(name='hyper_search_lr_batch_size_')
     )
     results = tuner.fit()
     ray.shutdown()

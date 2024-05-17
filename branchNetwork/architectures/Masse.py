@@ -9,22 +9,22 @@ from typing import Union
 class MasseModel(nn.Module):
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(MasseModel, self).__init__()
-            self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
-            self.layer_2 = BranchLayer(2000, 
-                                       2000, 
+            self.layer_1 = nn.Linear(model_configs['n_in'], 784)
+            self.layer_2 = BranchLayer(784, 
+                                       784, 
                                        1, 
-                                       2000,
+                                       784,
                                        model_configs['device'])
-            self.layer_3 = BranchLayer(2000,
-                                       2000,
+            self.layer_3 = BranchLayer(784,
+                                       784,
                                        1,
                                        model_configs['n_out'],
                                        device=model_configs['device'])
-            self.gating_1 = BranchGatingActFunc(2000,
+            self.gating_1 = BranchGatingActFunc(784,
                                                 1,
                                                 model_configs['n_contexts'],
                                                 0.8)
-            self.gating_2 = BranchGatingActFunc(2000,
+            self.gating_2 = BranchGatingActFunc(784,
                                                 1,
                                                 model_configs['n_contexts'],
                                                 0.8)
