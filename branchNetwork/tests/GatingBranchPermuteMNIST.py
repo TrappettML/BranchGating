@@ -26,8 +26,8 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        if i > 2:
-            break
+        # if i > 2:
+        #     break
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(images, task)
@@ -45,8 +45,8 @@ def evaluate_model(model, task, data_loader, criterion, device='cpu'):
     total_loss = 0
     with torch.no_grad():
         for i, (images, labels) in enumerate(data_loader):
-            if i>4:
-                break
+            # if i>4:
+            #     break
             images, labels = images.to(device), labels.to(device)
             outputs = model(images, task)
             loss = criterion(outputs, labels)

@@ -54,7 +54,7 @@ def run_tune():
     # MODEL_NAMES = ['BranchModel']
     # branch_options = [1,2,7,14,28,49,98,196,392,784]
     seeds = [None, 21, 42]
-    repeats = 125
+    repeats = 5
     param_space = {'model_name':tune.grid_search(MODEL_NAMES), 
                    'repeat':tune.grid_search([i for i in range(repeats)]),
                    'n_in': 784, 
@@ -68,7 +68,7 @@ def run_tune():
                     'hidden_layers': [784, 784],
                     'lr': 0.0001,
                     'batch_size': 32,
-                    'epochs_per_train': 40,
+                    'epochs_per_train': 20,
                     'permute_seeds': seeds,
                     'device': 'cpu'
                     }
