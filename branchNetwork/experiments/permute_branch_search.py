@@ -23,7 +23,7 @@ def run_tune():
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
-    repeats = 1
+    repeats = 10
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
@@ -38,7 +38,7 @@ def run_tune():
             "n_repeat": tune.grid_search([i for i in range(repeats)]),
             "lr": 0.0001,
             "batch_size": 32,
-            "epochs_per_task": 2,
+            "epochs_per_task": 30,
             "permute_seeds": [None, 42],
         },
         tune_config=tune.TuneConfig(num_samples=1, 
