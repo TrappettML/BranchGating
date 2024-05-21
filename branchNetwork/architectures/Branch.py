@@ -41,6 +41,8 @@ class BranchModel(nn.Module):
             x = self.drop_out(self.act_func(self.gating_2(self.layer_2(x), context)))
             return self.layer_3(x)
         
+        def __str__(self) -> str:
+            return 'BranchModel'
         
 def test_Branch():
     model_configs = {'n_in': 784, 
