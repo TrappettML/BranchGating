@@ -9,6 +9,7 @@ from typing import Union
 class MasseModel(nn.Module):
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(MasseModel, self).__init__()
+            learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
             self.layer_1 = nn.Linear(model_configs['n_in'], 784)
             self.layer_2 = BranchLayer(784, 
                                        784, 
@@ -23,11 +24,13 @@ class MasseModel(nn.Module):
             self.gating_1 = BranchGatingActFunc(784,
                                                 1,
                                                 model_configs['n_contexts'],
-                                                0.8)
+                                                model_configs['sparsity'],
+                                                learn_gates)
             self.gating_2 = BranchGatingActFunc(784,
                                                 1,
                                                 model_configs['n_contexts'],
-                                                0.8)
+                                                model_configs['sparsity'],
+                                                learn_gates)
             self.act_func = nn.ReLU()  
             self.drop_out = nn.Dropout(model_configs['dropout']) 
                     

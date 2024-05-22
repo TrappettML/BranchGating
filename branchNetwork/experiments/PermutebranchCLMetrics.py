@@ -205,6 +205,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'sparsity': 0.8,
                     'dropout': 0.5,
                     'hidden_layers': [784, 784],
+                    'learn_gates': configs['learn_gates'] if 'learn_gates' in configs.keys() else False,
                     }
 
     if not ray.is_initialized():

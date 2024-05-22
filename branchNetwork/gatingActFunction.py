@@ -4,7 +4,7 @@ from torch import nn
 from ipdb import set_trace
 
 class BranchGatingActFunc(nn.Module):
-    def __init__(self, n_next_h, n_branches=1, n_contexts=1, sparsity=0):
+    def __init__(self, n_next_h, n_branches=1, n_contexts=1, sparsity=0, learn_gates=False):
         '''
         args:
         - n_branches (int): The number of branches.
@@ -27,6 +27,7 @@ class BranchGatingActFunc(nn.Module):
         self.masks = {}
         self.forward = self.branch_forward if n_branches > 1 else self.masse_forward
         self.seen_contexts = list()
+        self.learn_gates = learn_gates
         
     def make_mask(self):
         if self.n_branches == 1: # will be Masse style Model
@@ -36,7 +37,7 @@ class BranchGatingActFunc(nn.Module):
             return self.gen_branching_mask()
         
     def gen_branching_mask(self):
-        return th.stack([generate_interpolated_array(self.n_branches, self.sparsity) for _ in range(self.n_next_h)]).float().T
+        return th.stack([generate_interpolated_array(self.n_branches, self.sparsity, self.learn_gates) for _ in range(self.n_next_h)]).float().T
   
     def branch_forward(self, x, context=0):
         '''forward function for when n_b > 1
@@ -60,36 +61,46 @@ class BranchGatingActFunc(nn.Module):
         
         
             
-def generate_interpolated_array(x, value):
+def generate_interpolated_array(x, sparsity, learn_gates=False):
     """
     Generate a 1D tensor of size x, smoothly transitioning from 1's to 0's
-    based on the input value between 0 and 1.
+    based on the input sparsity between 0 and 1.
 
     Parameters:
     - x: The size of the output tensor.
-    - value: A single value between 0 and 1 determining the blend of 1's and 0's.
+    - sparsity: A single sparsity between 0 and 1 determining the blend of 1's and 0's.
 
     Returns:
     - A PyTorch tensor according to the specified rules.
     """
     assert x > 0, "x must be greater than 0"
-    assert value >= 0, "value must be greater than or equal to 0"
-    assert value <= 1, "value must be less than or equal to 1"
+    assert sparsity >= 0, "sparsity must be greater than or equal to 0"
+    assert sparsity <= 1, "sparsity must be less than or equal to 1"
 
-    # Calculate the transition index based on the value
-    transition_index = round((x - 1) * (1 - value))
+    # Calculate the transition index based on the sparsity
+    transition_index = round((x - 1) * (1 - sparsity))
 
     # Create a tensor of 1's and 0's based on the transition index
     output = th.zeros(x)
     output[:transition_index + 1] = 1
     #permute the tensor randomly
     output = output[th.randperm(x)]
+    if learn_gates:
+        output = make_gates_learnable(output)
+    # print(f'output: {output}')
     return output        
     
+def make_gates_learnable(gates):
+    mask = gates != 0
+    values = gates[mask].clone().detach().requires_grad_(True)
+    learn_gates = th.zeros_like(gates, dtype=th.float, requires_grad=False)
+    learn_gates[mask] = values
+    return learn_gates
+
 
 def test_gating_act_func():
     n_batches = 10
-    n_b = 3
+    n_b = 10
     n_next_h = 4
     n_contexts = 2
     for sparsity in [0, 0.5, 1]:
@@ -102,7 +113,7 @@ def test_gating_act_func():
 def test_masse_act_func():
     n_batches = 10
     n_b = 1
-    n_next_h = 4
+    n_next_h = 10
     n_contexts = 2
     for sparsity in [0, 0.5, 1]:
         masse_gate = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity)   
@@ -111,6 +122,19 @@ def test_masse_act_func():
         assert out.shape == (n_batches, n_next_h), f'Expected shape {(n_batches, n_next_h)}, got {out.shape}'
     print("MasseActFunc test passed")
     
+def test_learnable_gates():
+    n_batches = 10
+    n_b = 10
+    n_next_h = 4
+    n_contexts = 2
+    for sparsity in [0, 0.5, 1]:
+        gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity, learn_gates=True)
+        x = th.rand(n_batches, n_b, n_next_h)
+        out = gating(x)
+        assert out.shape == (n_batches, n_next_h), f'Expected shape {(n_batches, n_next_h)}, got {out.shape}'
+    print("learnGates test passed")
+    
 if __name__ == "__main__":
     test_gating_act_func()
     test_masse_act_func()
+    test_learnable_gates()

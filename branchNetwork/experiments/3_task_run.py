@@ -70,7 +70,8 @@ def run_tune():
                     'batch_size': 32,
                     'epochs_per_train': 20,
                     'permute_seeds': seeds,
-                    'device': 'cpu'
+                    'device': 'cpu',
+                    'learn_gates': False,
                     }
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():

@@ -12,6 +12,7 @@ class BranchModel(nn.Module):
         May, 16: Change to only 784 for each layer to make searching through branches easier.'''
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(BranchModel, self).__init__()
+            learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
             # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
             self.layer_1 = BranchLayer(model_configs['n_in'],
                                       model_configs['n_npb'][0],
@@ -21,7 +22,8 @@ class BranchModel(nn.Module):
             self.gating_1 = BranchGatingActFunc(784,
                                                 model_configs['n_branches'][0],
                                                 model_configs['n_contexts'],
-                                                model_configs['sparsity'])
+                                                model_configs['sparsity'],
+                                                learn_gates)
             self.layer_2 = BranchLayer(784,
                                       model_configs['n_npb'][1],
                                        model_configs['n_branches'][1],
@@ -30,7 +32,8 @@ class BranchModel(nn.Module):
             self.gating_2 = BranchGatingActFunc(784,
                                                 model_configs['n_branches'][1],
                                                 model_configs['n_contexts'],
-                                                model_configs['sparsity'])
+                                                model_configs['sparsity'],
+                                                learn_gates)
             
             self.layer_3 = nn.Linear(784, model_configs['n_out'])
             self.drop_out = nn.Dropout(model_configs['dropout'])
@@ -52,7 +55,8 @@ def test_Branch():
                     'n_npb': [56, 56], 
                     'n_branches': [14, 14], 
                     'sparsity': 0.8,
-                    'dropout': 0,}
+                    'dropout': 0,
+                    'learn_gates': False,}
     
     x = torch.rand(32, 784)
     

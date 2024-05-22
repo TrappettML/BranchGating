@@ -22,7 +22,9 @@ def test_basic_forwards():
                      'n_npb': [56, n_npb], 
                      'n_branches': [14, n_branches], 
                      'sparsity': sparsity,
-                     'dropout': 0,}
+                     'dropout': 0,
+                    #  'learn_gates': True,
+                     }
     
     simple_model = SimpleModel(model_configs)
     masse_model = MasseModel(model_configs)
@@ -69,7 +71,9 @@ def test_multi_contexts():
                      'n_npb': [56, n_npb], 
                      'n_branches': [14, n_branches], 
                      'sparsity': sparsity,
-                     'dropout': 0,}
+                     'dropout': 0,
+                    #  'learn_gates': True,
+                     }
     
     simple_model = SimpleModel(model_configs)
     masse_model = MasseModel(model_configs)

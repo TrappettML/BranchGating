@@ -6,6 +6,7 @@ import torch.nn as nn
 import ray
 from ray import tune, train
 import pandas as pd
+from configs import BASE_CONFIG
 
 from typing import Union
 from ipdb import set_trace
@@ -29,20 +30,17 @@ def run_tune():
             ray.init(address='auto')
         else:
             ray.init(num_cpus=20)
+    param_config = BASE_CONFIG
+    param_config['model_name'] = tune.grid_search(MODEL_NAMES)
+    param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])
+    param_config['permute_seeds'] = [None, 42]
+    param_config['n_b_1'] = tune.grid_search(layer_1_branches)
+    param_config['epochs_per_task'] = 30
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
-        param_space={
-            "model_name": tune.grid_search(MODEL_NAMES),
-            "n_b_1": tune.grid_search(layer_1_branches), # 14, # 
-            # "n_b_2":  tune.grid_search(layer_2_branches), # 20, #
-            "n_repeat": tune.grid_search([i for i in range(repeats)]),
-            "lr": 0.0001,
-            "batch_size": 32,
-            "epochs_per_task": 30,
-            "permute_seeds": [None, 42],
-        },
+        param_space=param_config,
         tune_config=tune.TuneConfig(num_samples=1, 
-                                    metric="remembering", 
+                                    metric="forward_transfer", 
                                     mode="max"),
         run_config=train.RunConfig(name='permute_branch_search_')
     )

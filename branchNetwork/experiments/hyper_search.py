@@ -65,7 +65,8 @@ MODEL_CONFIGS = {'n_in': 784,
                      'n_npb': [56, 56], 
                      'n_branches': [14, 14], 
                      'sparsity': 0.8,
-                     'dropout': 0.5,}
+                     'dropout': 0.5,
+                     'learn_gates': False,}
     
 def train_and_evaluate_model(configs: dict[str, Union[str, int]]) -> float:
     model = MODEL_DICT[configs['model_name']](configs['model_configs'])
