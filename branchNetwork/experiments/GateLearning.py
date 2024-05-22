@@ -6,7 +6,7 @@ import torch.nn as nn
 import ray
 from ray import tune, train
 import pandas as pd
-from configs import BASE_CONFIG
+from branchNetwork.configs import BASE_CONFIG
 
 from typing import Union
 from ipdb import set_trace
