@@ -24,12 +24,12 @@ def run_tune():
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
-    repeats = 10
+    repeats = 1
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
         else:
-            ray.init(num_cpus=20)
+            ray.init(num_cpus=30)
     param_config = BASE_CONFIG
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
     param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])

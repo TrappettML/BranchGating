@@ -5,6 +5,7 @@ from branchNetwork.architectures.Simple import SimpleModel
 
 import torch
 import torch.nn as nn
+from ipdb import set_trace
 
 def test_basic_forwards():
     n_batches = 10
@@ -23,7 +24,7 @@ def test_basic_forwards():
                      'n_branches': [14, n_branches], 
                      'sparsity': sparsity,
                      'dropout': 0,
-                    #  'learn_gates': True,
+                     'learn_gates': True,
                      }
     
     simple_model = SimpleModel(model_configs)
@@ -54,6 +55,9 @@ def test_model(model, input, output_shape, context):
     assert y.shape == output_shape
     print(f"\ttest passed.")
     print(f"\ty sum: {y.sum()}")
+    set_trace()
+    y.sum().backward()
+    print(f"\tgrads test:{sum([len(p.grad) for p in model.parameters() if p.grad is not None])}")
     
 def test_multi_contexts():
     n_batches = 10
@@ -72,7 +76,7 @@ def test_multi_contexts():
                      'n_branches': [14, n_branches], 
                      'sparsity': sparsity,
                      'dropout': 0,
-                    #  'learn_gates': True,
+                     'learn_gates': True,
                      }
     
     simple_model = SimpleModel(model_configs)
