@@ -55,7 +55,7 @@ def test_model(model, input, output_shape, context):
     assert y.shape == output_shape
     print(f"\ttest passed.")
     print(f"\ty sum: {y.sum()}")
-    set_trace()
+    # set_trace()
     y.sum().backward()
     print(f"\tgrads test:{sum([len(p.grad) for p in model.parameters() if p.grad is not None])}")
     

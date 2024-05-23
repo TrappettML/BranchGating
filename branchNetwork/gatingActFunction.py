@@ -81,6 +81,7 @@ class BranchGatingActFunc(nn.Module):
             "make the first unsigned key the new context"
             unsigned_key = [k for k in self.learnable_parameters.keys() if 'unsigned' in k][0]
             self.learnable_parameters[context] = self.learnable_parameters.pop(unsigned_key)
+            self.masks[context] = self.masks.pop(unsigned_key[8:])
         if self.training:
             # make only the current context trainable
             if not self.activate_current_context:
@@ -224,7 +225,7 @@ def test_gradient_backprop_multi_context():
     # Create a dummy optimizer, assuming learnable parameters are properly registered
     optimizer = th.optim.SGD(gating.parameters(), lr=0.1)
     
-    for context_index in range(n_contexts):
+    for context_index in [None] + [range(n_contexts)] :
         # Simulate switching context
         # gating.set_context(context_index)  # Assuming there is a method to switch context
         x = th.randn(n_batches, n_b, n_next_h, requires_grad=True)
