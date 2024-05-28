@@ -1,1 +1,1 @@
-python launch.py --exp-name PermuteBranch --command "python ../experiments/permute_branch_search.py" --num-nodes 6 --partition "computelong_intel" --days 14
+python launch.py --exp-name BenchMarkBranch --command "python ../experiments/permute_branch_search.py" --num-nodes 2 --partition "computelong_intel" --days 14

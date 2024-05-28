@@ -18,9 +18,9 @@ os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 
 def run_tune():
     # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
-    # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
-    MODEL_NAMES = ['BranchModel']
-    layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
+    MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
+    # MODEL_NAMES = ['BranchModel']
+    # layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
@@ -34,7 +34,7 @@ def run_tune():
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
     param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])
     param_config['permute_seeds'] = [None, 42]
-    param_config['n_b_1'] = tune.grid_search(layer_1_branches)
+    # param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 30
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
@@ -42,7 +42,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='permute_branch_search_')
+        run_config=train.RunConfig(name='permute_benchmark_run_')
     )
     results = tuner.fit()
     ray.shutdown()
@@ -64,7 +64,7 @@ def main():
     results = run_tune()
     elapsed_time = time.time() - time_start
     print(f'Elapsed time: {elapsed_time} seconds')
-    process_results(results, 'branch_search_results')
+    process_results(results, 'other_funcs_bench_results')
     print(f'_____Finsihed_____')
     
     
