@@ -24,7 +24,7 @@ def run_tune():
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
-    repeats = 10
+    repeats = 7
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
@@ -36,8 +36,8 @@ def run_tune():
     param_config['permute_seeds'] = [None, 42]
     param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 20
-    param_config['learn_gates'] = tune.grid_search([True, False])
-    # param_config['sparciy'] = tune.grid_search([0.0, 0.2, 0.3, 0.5, 0.7, 0.8, 1.0])
+    param_config['learn_gates'] = True, # tune.grid_search([True, False])
+    param_config['sparciy'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.0])
     
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
@@ -45,7 +45,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='Learn_Gating_')
+        run_config=train.RunConfig(name='Spars_Learn_Gating_')
     )
     results = tuner.fit()
     ray.shutdown()
@@ -67,7 +67,7 @@ def main():
     results = run_tune()
     elapsed_time = time.time() - time_start
     print(f'Elapsed time: {elapsed_time} seconds')
-    process_results(results, 'branch_search_results')
+    process_results(results, 'sparse_branch_search_results')
     print(f'_____Finsihed_____')
     
     

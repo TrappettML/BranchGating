@@ -202,7 +202,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'device': 'cpu', 
                     'n_npb': [get_n_npb(n_b_1, 784), get_n_npb(n_b_2, 784)], 
                     'n_branches': [n_b_1, n_b_2], 
-                    'sparsity': 0.8,
+                    'sparsity': configs['sparsity'] if 'sparsity' in configs.keys() else 0.0,
                     'dropout': 0.5,
                     'hidden_layers': [784, 784],
                     'learn_gates': configs['learn_gates'] if 'learn_gates' in configs.keys() else False,
