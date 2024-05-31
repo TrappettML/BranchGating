@@ -21,11 +21,11 @@ def run_tune():
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['MasseModel']
     MODEL_NAMES = ['BranchModel']
-    # layer_1_branches = [1,2,7,14,28,49,98,196,392,784]
+    layer_1_branches = [28, 49, 98] # [1,2,7,14,28,49,98,196,392,784]
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
-    repeats = 1
+    repeats = 3
     if not ray.is_initialized():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
@@ -35,10 +35,11 @@ def run_tune():
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
     param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])
     param_config['permute_seeds'] = [None, 42]
-    # param_config['n_b_1'] = tune.grid_search(layer_1_branches)
+    param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 20
     param_config['learn_gates'] = tune.grid_search([True, False])
-    param_config['sparsity'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.0])
+    # param_config['sparsity'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.0])
+    param_config['gate_func'] = tune.grid_search(['sum', 'max', 'softmax', 'softmax_sum'])
     
     tuner = tune.Tuner(
         tune.with_resources(run_continual_learning, {"cpu": 1}),
