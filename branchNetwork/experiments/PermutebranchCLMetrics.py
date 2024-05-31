@@ -1,5 +1,5 @@
 import torch
-from branchNetwork.architectures.Branch import BranchModel
+from branchNetwork.architectures.BranchMM import BranchModel
 from branchNetwork.architectures.Expert import ExpertModel
 from branchNetwork.architectures.Masse import MasseModel
 from branchNetwork.architectures.Simple import SimpleModel
@@ -206,10 +206,12 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'dropout': 0.5,
                     'hidden_layers': [784, 784],
                     'learn_gates': configs['learn_gates'] if 'learn_gates' in configs.keys() else False,
+                    'gate_func': configs['gate_func'] if 'gate_func' in configs.keys() else 'sum',
+                    'temp': configs['temp'] if 'temp' in configs.keys() else 1.0,
                     }
 
     if not ray.is_initialized():
-        ray.init(num_cpus=70)
+        ray.init(num_cpus=20)
     # results = ray.get([train_model.remote(model_name, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS) for model_name in MODEL_NAMES])
 
     all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
@@ -224,5 +226,5 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
 if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f'Using {device} device.')
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'permute_seeds': [None, 42], 'epochs_per_task': 5, 'batch_size': 32})
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'permute_seeds': [None, 42], 'epochs_per_task': 5, 'batch_size': 32, 'gate_func': 'softmax', 'temp': 2.0})
     print(f'Results: {results}')

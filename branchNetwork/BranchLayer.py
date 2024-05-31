@@ -66,6 +66,7 @@ def test_branch_layer():
         'n_next_h': 4
     }
     branch_layer = BranchLayer(**branch_params)
+    set_trace()
     x = th.randn(5, 10)
     out = branch_layer(x)
     set_trace()

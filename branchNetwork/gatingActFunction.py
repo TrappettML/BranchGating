@@ -4,10 +4,10 @@ from torch import nn
 from ipdb import set_trace
 
 class BranchGatingActFunc(nn.Module):
-    def __init__(self, n_next_h, n_branches=1, n_contexts=1, sparsity=0, learn_gates=False):
+    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, gate_func='sum',temp=1):
         '''
         args:
-        - n_branches (int): The number of branches.
+        - n_b (int): The number of branches.
         - n_next_h (int): The number of neurons in the next hidden layer.
         - n_contexts (int, optional): The number of contexts. Defaults to 1.
         - sparsity (float, optional): The sparsity of the gating function. Defaults to 0, meaning no sparsity, all ones.
@@ -23,17 +23,44 @@ class BranchGatingActFunc(nn.Module):
         self.sparsity = sparsity
         self.n_next_h = n_next_h
         self.n_contexts = n_contexts
-        self.n_branches = n_branches
+        self.n_b = n_b
         self.masks = {}
-        self.forward = self.branch_forward if n_branches > 1 else self.masse_forward
+        self.forward = self.branch_forward if n_b > 1 else self.masse_forward
         self.get_context = self.get_learning_context if learn_gates else self.get_unlearning_context
         self.seen_contexts = list()
         self.learn_gates = learn_gates
         self.current_context = None
+        self.gate_act_func = self.set_gate_func(gate_func, temp)
         if learn_gates:
             self.make_learnable_parameters()
             self.all_grads_false = False
             self.activate_current_context = False
+    
+    def set_gate_func(self, gate_func, temp):
+        if gate_func == 'sum':
+            return th.sum
+        elif gate_func == 'max':
+            def my_max(x):
+                return th.max(x, dim=1)[0]
+            return my_max
+        elif gate_func == 'softmax':
+            def my_softmax(x):
+                sm = nn.functional.softmax(x/temp, dim=1)
+                sm_2d = sm.view(-1, sm.size(1))
+                sampled_indices = th.multinomial(sm_2d, num_samples=1)
+                sampled_indices = sampled_indices.view(x.size(0), x.size(2)) 
+                batch_indices = th.arange(x.size(0)).unsqueeze(-1).expand_as(sampled_indices)
+                max_x = x[batch_indices, batch_indices, th.arange(x.size(2))]
+                return max_x
+            return my_softmax
+        elif gate_func == 'softmax_sum':
+            def my_smx_sum(x):
+                sm = nn.functional.softmax(x/temp, dim=1)
+                sm_mm = x * sm
+                return th.sum(sm_mm, dim=1)
+            return my_smx_sum
+        else:
+            raise ValueError(f"gate_func must be one of ['sum', 'max', 'softmax', 'softmax_sum'], got {gate_func}")
         
     def make_learnable_parameters(self):
         self.learnable_parameters = nn.ParameterDict()
@@ -42,21 +69,29 @@ class BranchGatingActFunc(nn.Module):
             self.learnable_parameters['unsigned' + str(i)] = self.make_learnable_gates(self.masks[str(i)])
         
     def make_mask(self):
-        if self.n_branches == 1: # will be Masse style Model
+        if self.n_b == 1: # will be Masse style Model
             mask = self.generate_interpolated_array(self.n_next_h, self.sparsity)
             return mask.float()
         else:
             return self.gen_branching_mask()
         
+    def _gen_branching_mask(self):
+        return th.stack([self.generate_interpolated_array(self.n_b, self.sparsity) for _ in range(self.n_next_h)]).float().T
+    
     def gen_branching_mask(self):
-        return th.stack([self.generate_interpolated_array(self.n_branches, self.sparsity) for _ in range(self.n_next_h)]).float().T
-  
+        t_i = self.get_transition_index()
+        mask = th.zeros(self.n_b, self.n_next_h, dtype=th.float32)
+        mask[:t_i, :] = 1
+        random_indices = th.argsort(th.rand(self.n_b, self.n_next_h), dim=0)
+        mask = th.gather(mask, 0, random_indices)
+        return mask
+        
     def branch_forward(self, x, context=0):
         '''forward function for when n_b > 1
            sum over the n_b dimension'''
         context = str(context)
         gate = self.get_context(context)
-        return th.sum(x * gate, dim=1)
+        return th.sum(x * gate, dim=1) # x is shape (n_batches, n_b, n_next_h), and so we are summing over branches. 
     
     def masse_forward(self, x, context=0):
         '''forward function for when n_b = 1,
@@ -94,13 +129,19 @@ class BranchGatingActFunc(nn.Module):
         local_mask = self.masks[context] != 0
         full_mask = self.masks[context].clone().detach().requires_grad_(False)
         full_mask[local_mask] = self.learnable_parameters[context]
-        return full_mask
+        return th.tanh(full_mask)
+        # return full_mask
     
     def set_current_grad_true(self, context):
         self.set_grads_to_false()
         self.learnable_parameters[context].requires_grad = True
         self.activate_current_context = True
         
+    def get_transition_index(self):
+        assert self.sparsity >= 0 and self.sparsity <= 1, "Sparsity must be a value between 0 and 1"
+        transition_index = round((self.n_b - 1) * (1 - self.sparsity))
+        return transition_index
+    
     def generate_interpolated_array(self, x, sparsity):
         """
         Generate a 1D tensor of size x, smoothly transitioning from 1's to 0's
@@ -121,11 +162,11 @@ class BranchGatingActFunc(nn.Module):
         transition_index = round((x - 1) * (1 - sparsity))
 
         # Create a tensor of 1's and 0's based on the transition index
-        output = th.zeros(x)
+        output = th.zeros(x, dtype=th.float32)
         output[:transition_index + 1] = 1
         #permute the tensor randomly
         output = output[th.randperm(x)]
-        return output.type(th.float32)       
+        return output    
         
     def make_learnable_gates(self, base):
         mask = base != 0
@@ -203,14 +244,14 @@ def test_branch_gating_act_func():
         
         # Verify parameter constraints
         assert 0 <= gating.sparsity <= 1, "Sparsity must be between 0 and 1"
-        assert gating.n_branches == n_b, "Branch count mismatch"
+        assert gating.n_b == n_b, "Branch count mismatch"
         assert gating.n_contexts == n_contexts, "Context count mismatch"
         assert gating.n_next_h == n_next_h, "Next hidden layer size mismatch"
         
     print("All tests passed for BranchGatingActFunc")
     
     
-def test_gradient_backprop_multi_context():
+def test_gradient_backprop_multi_context(gate_func='sum',temp=1):
     th.manual_seed(42)  # for reproducibility
 
     n_batches = 5
@@ -220,8 +261,10 @@ def test_gradient_backprop_multi_context():
     sparsity = 0.5
     learn_gates = True
 
-    gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity, learn_gates)
-    
+    gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, 
+                                 sparsity, learn_gates, 
+                                 gate_func=gate_func,temp=temp)
+    # print(f'gating gate_func: {gating.gate_act_func}')
     # Create a dummy optimizer, assuming learnable parameters are properly registered
     optimizer = th.optim.SGD(gating.parameters(), lr=0.1)
     
@@ -266,3 +309,6 @@ if __name__ == "__main__":
     test_learnable_gates()
     test_branch_gating_act_func()
     test_gradient_backprop_multi_context()
+    for gate_func in ['sum', 'max', 'softmax', 'softmax_sum']:
+        test_gradient_backprop_multi_context(gate_func)
+        print(f'Gradient backprop test passed for {gate_func} gate function')
