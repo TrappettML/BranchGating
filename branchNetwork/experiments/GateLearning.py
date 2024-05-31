@@ -47,7 +47,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='Spars_branchMM_Learn_Gating_')
+        run_config=train.RunConfig(name='Branch_func_experiment_')
     )
     results = tuner.fit()
     ray.shutdown()
@@ -69,7 +69,7 @@ def main():
     results = run_tune()
     elapsed_time = time.time() - time_start
     print(f'Elapsed time: {elapsed_time} seconds')
-    process_results(results, 'test_mmbranch_sparsity_results')
+    process_results(results, 'branch_func_results')
     print(f'_____Finsihed_____')
     
     
