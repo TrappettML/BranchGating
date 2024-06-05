@@ -98,7 +98,11 @@ class BranchGatingActFunc(nn.Module):
            no sum needed'''
         context = str(context)
         gate = self.get_context(context)
-        return x * gate
+        out = x * gate
+        if len(out.shape) == 3:
+            assert out.shape[1] == 1, "Expected n_b to be 1"
+            out = out.squeeze(1)
+        return out
 
     def get_unlearning_context(self, context):
         '''check if context is in seen contexts, and return the index'''
@@ -190,9 +194,9 @@ class BranchGatingActFunc(nn.Module):
         
 
 
-def test_gating_act_func():
+def test_gating_act_func(branch=1):
     n_batches = 10
-    n_b = 10
+    n_b = branch
     n_next_h = 4
     n_contexts = 2
     for sparsity in [0, 0.5, 1]:
@@ -304,7 +308,8 @@ def test_gradient_backprop_multi_context(gate_func='sum',temp=1):
     print("Gradient management test across multiple contexts passed.")
     
 if __name__ == "__main__":
-    test_gating_act_func()
+    for b in [1,10, 20, 30 , 100]:
+        test_gating_act_func()
     test_masse_act_func()
     test_learnable_gates()
     test_branch_gating_act_func()

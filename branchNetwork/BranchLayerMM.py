@@ -24,17 +24,23 @@ class BranchLayer(nn.Module):
         self.create_indices()
         self.create_mask()
         self.create_weights()
-        assert self.w.shape == (self.n_in, self.n_b*self.n_next_h), f'weights shape is {self.weights.shape} and should be {(self.n_in, self.n_b*self.n_next_h)}'
+        assert self.w.shape == (self.n_npb, self.n_b*self.n_next_h), f'weights shape is {self.w.shape} and should be {(self.n_npb, self.n_b*self.n_next_h)}'
         assert self.mask.shape == (self.n_in, self.n_b*self.n_next_h), f'mask shape is {self.mask.shape} and should be {(self.n_in, self.n_b*self.n_next_h)}'
     
     def forward(self, x):
-        mask_w = self.mask * self.w
-        x = x @ mask_w
+        local_mask = self.mask != 0
+        local_weights = self.mask.clone().detach().requires_grad_(False)
+        # local_weights[local_mask] = self.w
+        local_weights[self.all_branch_indices, th.arange(local_weights.shape[1])] = self.w
+        # mask_w = self.mask * self.w
+        x = x @ local_weights
         x = x.view(-1, self.n_b, self.n_next_h)
         return x
         
     def create_weights(self) -> None:
-        self.w = nn.init.kaiming_uniform_(th.empty(self.n_in, self.n_b*self.n_next_h))
+        # self.w = nn.init.kaiming_uniform_(th.empty(self.n_in, self.n_b*self.n_next_h))
+        self.w = nn.init.kaiming_uniform_(th.empty(self.n_npb, self.n_b*self.n_next_h), a=0.1)
+        self.w = nn.Parameter(self.w)
 
     def create_mask(self) -> None:
         self.mask = th.zeros(self.n_in, self.n_b * self.n_next_h)
@@ -59,7 +65,7 @@ def test_branch_layer():
     branch_layer = BranchLayer(**branch_params)
     x = th.randn(5, 10)
     out = branch_layer(x)
-    set_trace()
+    # set_trace()
     assert out.shape == (5, 2, 4)
     
 if __name__ == '__main__':

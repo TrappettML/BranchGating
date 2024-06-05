@@ -226,5 +226,13 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
 if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f'Using {device} device.')
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'permute_seeds': [None, 42], 'epochs_per_task': 5, 'batch_size': 32, 'gate_func': 'softmax', 'temp': 2.0})
+    results = run_continual_learning({'model_name': 'BranchModel', 
+                                      'n_b_1': 1, 
+                                      'n_b_2': 1, 
+                                      'permute_seeds': [None, 42], 
+                                      'epochs_per_task': 5, 
+                                      'batch_size': 32, 
+                                      'sparsity': 0.4,
+                                      'gate_func': 'softmax', 
+                                      'temp': 2.0})
     print(f'Results: {results}')

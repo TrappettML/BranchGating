@@ -4,6 +4,7 @@ from torch import nn
 from branchNetwork.BranchLayerMM import BranchLayer
 from branchNetwork.gatingActFunction import BranchGatingActFunc
 from typing import Union
+from ipdb import set_trace
 
 
 class BranchModel(nn.Module):
@@ -44,6 +45,7 @@ class BranchModel(nn.Module):
             self.act_func = nn.ReLU()  
                      
         def forward(self, x, context=0):
+            # set_trace()
             x = self.drop_out(self.act_func(self.gating_1(self.layer_1(x), context)))
             x = self.drop_out(self.act_func(self.gating_2(self.layer_2(x), context)))
             return self.layer_3(x)
@@ -55,7 +57,7 @@ def test_Branch(gate_func='sum', temp=1):
                     'n_contexts': 5, 
                     'device': 'cpu', 
                     'n_npb': [56, 56], 
-                    'n_branches': [14, 14], 
+                    'n_branches': [1, 1], 
                     'sparsity': 0.8,
                     'dropout': 0,
                     'learn_gates': False,

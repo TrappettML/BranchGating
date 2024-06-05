@@ -38,7 +38,7 @@ def run_tune():
     param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 20
     param_config['learn_gates'] = tune.grid_search([True])
-    param_config['sparsity'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.0])
+    param_config['sparsity'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
     # param_config['gate_func'] = tune.grid_search(['sum', 'max', 'softmax', 'softmax_sum'])
     
     tuner = tune.Tuner(
