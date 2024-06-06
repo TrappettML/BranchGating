@@ -143,7 +143,7 @@ def load_permuted_flattened_mnist_data(batch_size=32, permute_seed=42, download=
     """
 
     # Define transformation pipeline
-    if permute_seed is not None:
+    if permute_seed != 0:
         # Set the random seed for reproducibility of the permutation
         np.random.seed(permute_seed)
         idx = torch.from_numpy(np.random.permutation(28 * 28))  # Create a permutation of the 784 pixel indices

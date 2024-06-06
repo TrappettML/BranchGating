@@ -39,6 +39,10 @@ class BranchGatingActFunc(nn.Module):
     def set_gate_func(self, gate_func, temp):
         if gate_func == 'sum':
             return th.sum
+        elif gate_func == 'median':
+            def my_median(x):
+                return th.median(x, dim=1)[0]
+            return my_median
         elif gate_func == 'max':
             def my_max(x):
                 return th.max(x, dim=1)[0]

@@ -34,7 +34,7 @@ def run_tune():
     param_config = BASE_CONFIG
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
     param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])
-    param_config['permute_seeds'] = [None, 42]
+    param_config['permute_seeds'] = [0, 42]
     param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 20
     param_config['learn_gates'] = tune.grid_search([True])

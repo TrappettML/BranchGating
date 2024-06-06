@@ -15,6 +15,7 @@ from collections import OrderedDict
 from typing import Callable, Union
 from pickle import dump
 import os
+import socket
 
 
 
@@ -56,55 +57,34 @@ def evaluate_model(model, task, data_loader, criterion, device='cpu'):
     accuracy = 100 * correct / total
     return accuracy, total_loss / len(data_loader)
 
-@ray.remote
-def single_ray_eval(model, images, labels, task, criterion, device='cpu'):
-    model.eval()
-    with torch.no_grad():
-        images, labels = images.to(device), labels.to(device)
-        outputs = model(images, task)
-        loss = criterion(outputs, labels)
-        _, predicted = torch.max(outputs, 1)
-        correct = (predicted == labels).sum().item()
-    return correct, loss.item(), labels.size(0)
-
-
-def parallel_eval_data(model, task, data_loader, criterion, device='cpu'):
-    model.eval()
-    # print(f'beinging evaluation')
-    correct, total = 0, 0
-    total_loss = 0
-    with torch.no_grad():
-        results = ray.get([single_ray_eval.remote(model, images, labels, task, criterion, device=device) for i, (images, labels) in enumerate(data_loader) if i < 3]) # if i < 3
-        for correct_batch, loss_batch, total_batch in results:
-            total += total_batch
-            correct += correct_batch
-            total_loss += loss_batch
-        accuracy = 100 * correct / total
-    # print(f'accuracy: {accuracy}; correct: {correct}; total: {total}')
-    return accuracy, total_loss / len(data_loader)
-
-@ray.remote
-def new_ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
-    return {task: parallel_eval_data(model, task, test_loader, criterion, device=device)}
-
 # @ray.remote
-def ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
+def _evaluate_model(model, task, test_loader, criterion, device='cpu'):
     return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
-     
-def parallel_evaluate_model(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
-    # results = ray.get([new_ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for i, (task, test_loader) in enumerate(test_loaders.items())]) # if i < 3
-    results = [ray_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
+
+@ray.remote
+def ray_evaluate_model(model, task, test_loader, criterion, device='cpu'):
+     return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
+ 
+def evaluate_all_models(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
+    if not ray.is_initialized():
+            results = [_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
+    else:
+        results = ray.get([ray_evaluate_model.remote(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()])
     return results # list of dictionaries
 
 def calc_remembering(A_acc_1: float, A_acc_2: float) -> float:
     """Rem = Acc_2 / Acc_1 -> this will yield a value between 0 and 1 (most likely)
-       since Acc_2 is after trainging on a new task. If Greater than 1 than we have Backwards Transfer."""
+       since Acc_2 is after trainging on a new task. If Greater than 1 than we have Backwards Transfer.
+       General form:
+       R^{T_i}_{T_{j} = \frac{a^{T_i}_{T_j}}{a^{T_i}_{T_j-1}}"""
     return A_acc_2/A_acc_1
 
 def calc_forward_transfer(B_acc_0: float, B_acc_1: float) -> float:
     """FT = (B_acc_0 - B_acc_1)/ (B_acc_0 + B_acc_1)
         This will yield a value between -1 and 1. if the value is negative than negative interference.
-        if positive than forward transfer of information."""
+        if positive than forward transfer of information.
+        General form:
+        FT^{T_i}_{T_{j} = \frac{a^{T_i}_{T_{j-1}} - a^{T_i}_{T_{j}}}{a^{T_i}_{T_j} + a^{T_i}_{T_{j-1}}}"""
     return (B_acc_1 - B_acc_0)/ (B_acc_0 + B_acc_1)
 
     
@@ -113,6 +93,16 @@ def gather_task_accuracies(all_test_results: dict[str, list[float]], test_result
         for task, (acc, _) in result.items():
             all_test_results.setdefault(task, []).append(acc)
     return all_test_results
+
+def get_first_last_accuracies(all_eval_accuracies: dict[str, list[float]]) -> list[dict[str, float]]:
+    first_last_dict = []
+    for task, accs in all_eval_accuracies.items():
+        eval_task_dict = dict()
+        eval_task_dict['task_name'] = task
+        eval_task_dict['first_acc'] = accs[0]
+        eval_task_dict['last_acc'] = accs[-1]
+        first_last_dict.append(eval_task_dict)
+    return first_last_dict
 
 @timing_decorator
 def single_task(model:nn.Module,
@@ -129,9 +119,12 @@ def single_task(model:nn.Module,
     print(f'begining training model {model} on task {train_task}')
     for epoch in range(epochs):
         _ = train_epoch(model, train_loader, train_task, optimizer, criterion, device=device)
-        test_results = parallel_evaluate_model(model, test_loaders, criterion, device=device)
+        test_results = evaluate_all_models(model, test_loaders, criterion, device=device)
         task_accuracies = gather_task_accuracies(task_accuracies, test_results)
-    return task_accuracies
+    eval_first_last_accuracies = get_first_last_accuracies(task_accuracies)
+    single_task_data = {'train_task': train_task, 'eval_accuracies': eval_first_last_accuracies}
+    # set_trace()
+    return task_accuracies, single_task_data
 
 def setup_model(model_name: str, 
                 model_configs: dict[str, Union[int, list[int], dict[str, int], str]], 
@@ -143,13 +136,15 @@ def setup_model(model_name: str,
     criterion = nn.CrossEntropyLoss()
     return model, optim, criterion
 
-def setup_loaders(permute_seeds: list[int], batch_size: int):
+def setup_loaders(permute_seeds: list[int], batch_size: int, n_test_tasks: int = 3):
+    test_tasks = permute_seeds[:3]
     train_loaders = dict()
     test_loaders = dict()
     for seed in permute_seeds:
         test_loader, train_loader = load_permuted_flattened_mnist_data(batch_size, seed)
         train_loaders[seed] = train_loader
-        test_loaders[seed] = test_loader
+        if seed in test_tasks:
+            test_loaders[seed] = test_loader
     return train_loaders, test_loaders
 
 # @timing_decorator
@@ -160,13 +155,16 @@ def train_model(model_name: str,
                 model_configs: dict[str, Union[int, float, list[int]]] = None):
 
     model, optimizer, criterion = setup_model(model_name, model_configs=model_configs, model_dict=model_dict)
-    train_loaders, test_loaders = setup_loaders(train_config['permute_seeds'], train_config['batch_size'])
+    train_loaders, test_loaders = setup_loaders(train_config['permute_seeds'], train_config['batch_size'], train_config['n_test_tasks'])
     
     all_task_eval_accuracies = {}
+    all_first_last_data = []
     for task_name, task_loader in train_loaders.items():
-        task_accuracies = single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, train_config['epochs_per_task'], device='cpu')
+        task_accuracies, first_last_data = single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, train_config['epochs_per_task'], device='cpu')
         all_task_eval_accuracies[f'training_{str(task_name)}'] = task_accuracies
-    return {'model_name': model_name, 'task_evaluation_acc': all_task_eval_accuracies}
+        all_first_last_data.append(first_last_data)
+    # set_trace()
+    return {'model_name': model_name, 'task_evaluation_acc': all_task_eval_accuracies, 'first_last_data': all_first_last_data}
 
 
 def process_task_accuracies(all_task_accuracies: dict[str, list[float]], epochs_per_task: int, permute_seeds: list[int]) -> tuple[float, float]:
@@ -177,9 +175,59 @@ def process_task_accuracies(all_task_accuracies: dict[str, list[float]], epochs_
     remembering = calc_remembering(task0_acc_1, task0_acc_2)
     forward_transfer = calc_forward_transfer(task42_acc_0, task42_acc_1)
     return (remembering, forward_transfer)
-    
+
+def calc_metrics(d_j, prev_d_j, train_task):
+    task_metrics = []
+    for metric_dict in d_j:
+        for prev_metric_dict in prev_d_j:
+            if metric_dict['task_name'] == prev_metric_dict['task_name']:
+                prev_d_j_metric = prev_metric_dict['last_acc']
+        eval_task = metric_dict['task_name']
+        # set_trace()
+        rem = calc_remembering(prev_d_j_metric, metric_dict['last_acc'] )
+        ft = calc_forward_transfer(metric_dict['last_acc'], prev_d_j_metric)
+        if eval_task == train_task:
+            rem = None
+            rem = None
+        task_metrics.append({'task_name': eval_task, 'remembering': rem, 'forward_transfer': ft})
+    return task_metrics
+
+def process_all_sequence_metrics(first_last_data: list[dict[str, float]]) -> list[dict[str, Union[str, dict[list]]]]:
+    sequence_results = []
+    # zeroth task - calc F.T. but not remembering
+    first_train_name = first_last_data[0]['train_task']
+    # k is train_task /name
+    # v is eval_accuracies
+    zero_task_metrics = []
+    for eval_task in first_last_data[0]['eval_accuracies']:
+        if eval_task['task_name'] != first_train_name:
+            rem = None
+            ft = calc_forward_transfer(eval_task['first_acc'], eval_task['last_acc'])
+        else:
+            rem = None
+            ft = None
+        zero_task_metrics.append({'task_name': eval_task['task_name'], 'remembering': rem, 'forward_transfer': ft})
+    sequence_results.append({'train_task': first_train_name, 'metrics': zero_task_metrics})
+    for i in range(1, len(first_last_data)):
+        train_task = first_last_data[i]['train_task']
+        prev_d_j = first_last_data[i-1]['eval_accuracies']
+        d_j = first_last_data[i]['eval_accuracies']
+        t_metrics = calc_metrics(d_j, prev_d_j, train_task)
+        sequence_results.append({'train_task': train_task, 'metrics': t_metrics})
+    # set_trace()
+    return sequence_results
+
+
 def get_n_npb(n_brances, n_in):
     return int(n_in/n_brances)
+
+def pickle_data(data_to_be_saved, file_path, file_name):
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+    with open(f'{file_path}/{file_name}.pkl', 'wb') as f:
+        dump(data_to_be_saved, f)
+    print(f'Saved results to {file_path}/{file_name}.pkl')
+
 
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     n_b_1 =  configs['n_b_1'] if 'n_b_1' in configs.keys() else 14
@@ -194,7 +242,10 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
-                    'permute_seeds': permute_seeds,}
+                    'permute_seeds': permute_seeds,
+                    'n_test_tasks': 3,
+                    'file_path': 'branchNetwork/data/longsequence/' if 'file_path' not in configs else configs['file_path'],
+                    'file_name': 'longsequence_data' if 'file_name' not in configs else configs['file_name']}
     
     MODEL_CONFIGS = {'n_in': 784, 
                     'n_out': 10, 
@@ -211,28 +262,23 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     }
 
     if not ray.is_initialized():
-        ray.init(num_cpus=20)
+        ray.init(num_cpus=5)
     # results = ray.get([train_model.remote(model_name, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS) for model_name in MODEL_NAMES])
 
     all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
+    sequence_metrics = process_all_sequence_metrics(all_task_accuracies['first_last_data'])
     remembering, forward_transfer = process_task_accuracies(all_task_accuracies, epochs_per_task, permute_seeds)
     train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
+    # pickle the results
+    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], 'sequential_data')
     return {'remembering': remembering, 'forward_transfer': forward_transfer}
-
 
 
 
 if __name__=='__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f'Using {device} device.')
-    results = run_continual_learning({'model_name': 'BranchModel', 
-                                      'n_b_1': 1, 
-                                      'n_b_2': 1, 
-                                      'permute_seeds': [None, 42], 
-                                      'epochs_per_task': 5, 
-                                      'batch_size': 32, 
-                                      'sparsity': 0.4,
-                                      'gate_func': 'softmax', 
-                                      'temp': 2.0})
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'permute_seeds': [0, 42, 21, 18, 30], 
+                                      'epochs_per_task': 20, 'batch_size': 32, 'gate_func': 'median', 'temp': 1.0})
     print(f'Results: {results}')
