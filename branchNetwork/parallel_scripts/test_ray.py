@@ -24,6 +24,10 @@ def run_nvidia_smi():
 # Call the function
 run_nvidia_smi()
 
+# Open a subprocess and run the command
+with subprocess.Popen(["lscpu"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+    print(f'lscpu output:\n{proc.communicate()}')
+
 print(f'Number of GPUs from torch: {torch.cuda.device_count()}')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
