@@ -28,6 +28,7 @@ class BranchLayer(nn.Module):
         assert self.mask.shape == (self.n_in, self.n_b*self.n_next_h), f'mask shape is {self.mask.shape} and should be {(self.n_in, self.n_b*self.n_next_h)}'
     
     def forward(self, x):
+        x = x.to(self.device)
         local_mask = self.mask != 0
         local_weights = self.mask.clone().detach().requires_grad_(False)
         # local_weights[local_mask] = self.w
@@ -39,11 +40,11 @@ class BranchLayer(nn.Module):
         
     def create_weights(self) -> None:
         # self.w = nn.init.kaiming_uniform_(th.empty(self.n_in, self.n_b*self.n_next_h))
-        self.w = nn.init.kaiming_uniform_(th.empty(self.n_npb, self.n_b*self.n_next_h), a=0.1)
+        self.w = nn.init.kaiming_uniform_(th.empty(self.n_npb, self.n_b*self.n_next_h, device=self.device), a=0.1)
         self.w = nn.Parameter(self.w)
 
     def create_mask(self) -> None:
-        self.mask = th.zeros(self.n_in, self.n_b * self.n_next_h)
+        self.mask = th.zeros(self.n_in, self.n_b * self.n_next_h, device=self.device)
         col_indices = th.arange(self.n_b * self.n_next_h).repeat(self.n_npb, 1)
         self.mask[self.all_branch_indices, col_indices] = 1    
     

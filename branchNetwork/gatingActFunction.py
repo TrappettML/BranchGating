@@ -4,7 +4,7 @@ from torch import nn
 from ipdb import set_trace
 
 class BranchGatingActFunc(nn.Module):
-    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, gate_func='sum',temp=1):
+    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, gate_func='sum',temp=1, device='cpu'):
         '''
         args:
         - n_b (int): The number of branches.
@@ -31,6 +31,7 @@ class BranchGatingActFunc(nn.Module):
         self.learn_gates = learn_gates
         self.current_context = None
         self.gate_act_func = self.set_gate_func(gate_func, temp)
+        self.device = device
         if learn_gates:
             self.make_learnable_parameters()
             self.all_grads_false = False
@@ -84,13 +85,14 @@ class BranchGatingActFunc(nn.Module):
     
     def gen_branching_mask(self):
         t_i = self.get_transition_index()
-        mask = th.zeros(self.n_b, self.n_next_h, dtype=th.float32)
+        mask = th.zeros(self.n_b, self.n_next_h, dtype=th.float32, device=self.device)
         mask[:t_i, :] = 1
-        random_indices = th.argsort(th.rand(self.n_b, self.n_next_h), dim=0)
+        random_indices = th.argsort(th.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
         mask = th.gather(mask, 0, random_indices)
         return mask
         
     def branch_forward(self, x, context=0):
+        x = x.to(self.device)
         '''forward function for when n_b > 1
            sum over the n_b dimension'''
         context = str(context)
@@ -98,6 +100,7 @@ class BranchGatingActFunc(nn.Module):
         return th.sum(x * gate, dim=1) # x is shape (n_batches, n_b, n_next_h), and so we are summing over branches. 
     
     def masse_forward(self, x, context=0):
+        x = x.to(self.device)
         '''forward function for when n_b = 1,
            no sum needed'''
         context = str(context)
@@ -170,7 +173,7 @@ class BranchGatingActFunc(nn.Module):
         transition_index = round((x - 1) * (1 - sparsity))
 
         # Create a tensor of 1's and 0's based on the transition index
-        output = th.zeros(x, dtype=th.float32)
+        output = th.zeros(x, dtype=th.float32, device=self.device)
         output[:transition_index + 1] = 1
         #permute the tensor randomly
         output = output[th.randperm(x)]
@@ -178,7 +181,7 @@ class BranchGatingActFunc(nn.Module):
         
     def make_learnable_gates(self, base):
         mask = base != 0
-        values = nn.init.kaiming_normal_(th.empty(mask.sum(),1)).squeeze(1).clone().detach().requires_grad_(True)
+        values = nn.init.kaiming_normal_(th.empty(mask.sum(),1, device=self.device)).squeeze(1).clone().detach().requires_grad_(True)
         learnable_gates = nn.Parameter(values).requires_grad_(True)
         return learnable_gates
         
