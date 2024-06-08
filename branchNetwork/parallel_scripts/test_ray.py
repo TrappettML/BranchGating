@@ -3,6 +3,26 @@ import numpy as np
 import ray
 import os
 import socket
+import subprocess
+
+def run_nvidia_smi():
+    # Command to run nvidia-smi
+    command = ["nvidia-smi"]
+
+    # Open a subprocess and run the command
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
+        output, errors = proc.communicate()
+
+    # Print the outputs
+    if proc.returncode == 0:
+        print("nvidia-smi output:")
+        print(output)
+    else:
+        print("Error running nvidia-smi:")
+        print(errors)
+
+# Call the function
+run_nvidia_smi()
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
