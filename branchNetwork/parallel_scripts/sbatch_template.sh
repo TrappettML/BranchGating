@@ -14,7 +14,7 @@
 
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
-#SBATCH --gpus-per-task={{NUM_GPUS_PER_NODE}}
+###### --gpus-per-task={{NUM_GPUS_PER_NODE}}
 ### See this stack for gpu info: https://stackoverflow.com/questions/67091056/gpu-allocation-in-slurm-gres-vs-gpus-per-task-and-mpirun-vs-srun
 #SBATCH --gres=gpu:6
 
