@@ -23,17 +23,12 @@ LOAD_ENV = "{{LOAD_ENV}}"
 CONDA_ENV = "{{CONDA_ENV}}"
 DAYS = "{{DAYS}}"
 
-if NUM_GPUS_PER_NODE != "0":
-    if 'talapas' in socket.gethostname():
-        template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
-    else:
-        template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
+
+if 'talapas' in socket.gethostname():
+    template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
 else:
-    if 'talapas' in socket.gethostname():
-        template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/sbatch_template.sh'
-    else:
-        template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/sbatch_template.sh'
-        
+    template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
+
 print(template_file)
 print(f'Path(__file__): {Path(__file__)}')        
 

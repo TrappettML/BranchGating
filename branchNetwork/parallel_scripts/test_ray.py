@@ -27,11 +27,20 @@ run_nvidia_smi()
 # Open a subprocess and run the command
 with subprocess.Popen(["lscpu"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
     print(f'lscpu output:\n{proc.communicate()}')
+    
+# Get a specific environment variable
+cuda_home = os.getenv('CUDA_HOME')
+print(f"CUDA_HOME: {cuda_home}")
+
+# Print all environment variables and filter for GPU-related
+for key, value in os.environ.items():
+    if 'CUDA' in key or 'GPU' in key or 'NVIDIA' in key:
+        print(f"{key}: {value}")
 
 print(f'Number of GPUs from torch: {torch.cuda.device_count()}')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
-
+print(os.get)
 
 ray.init(address='auto')
 print(f'Ray gpus: {ray.get_gpu_ids()}')
