@@ -25,6 +25,7 @@
 # Load modules or your own conda environment here
 # module load pytorch/v1.4.0-gpu
 # conda activate {{CONDA_ENV}}
+module load cuda/11.5.1
 {{LOAD_ENV}}
 
 ################# DON NOT CHANGE THINGS HERE UNLESS YOU KNOW WHAT YOU ARE DOING ###############
