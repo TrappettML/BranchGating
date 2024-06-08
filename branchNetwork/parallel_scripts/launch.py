@@ -10,13 +10,7 @@ import socket
 
 from pathlib import Path
 
-if 'talapas' in socket.gethostname():
-    template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/sbatch_template.sh'
-else:
-    template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/sbatch_template.sh'
-    
-print(template_file)
-print(f'Path(__file__): {Path(__file__)}')
+
 
 JOB_NAME = "{{JOB_NAME}}"
 NUM_NODES = "{{NUM_NODES}}"
@@ -28,6 +22,23 @@ COMMAND_SUFFIX = "{{COMMAND_SUFFIX}}"
 LOAD_ENV = "{{LOAD_ENV}}"
 CONDA_ENV = "{{CONDA_ENV}}"
 DAYS = "{{DAYS}}"
+
+if NUM_GPUS_PER_NODE != "0":
+    if 'talapas' in socket.gethostname():
+        template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
+    else:
+        template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
+else:
+    if 'talapas' in socket.gethostname():
+        template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/sbatch_template.sh'
+    else:
+        template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/sbatch_template.sh'
+        
+print(template_file)
+print(f'Path(__file__): {Path(__file__)}')        
+
+print(template_file)
+print(f'Path(__file__): {Path(__file__)}')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
