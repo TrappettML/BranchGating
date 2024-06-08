@@ -37,10 +37,11 @@ for key, value in os.environ.items():
     if 'CUDA' in key or 'GPU' in key or 'NVIDIA' in key:
         print(f"{key}: {value}")
 
+
 print(f'Number of GPUs from torch: {torch.cuda.device_count()}')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
-print(os.get)
+
 
 ray.init(address='auto')
 print(f'Ray gpus: {ray.get_gpu_ids()}')
