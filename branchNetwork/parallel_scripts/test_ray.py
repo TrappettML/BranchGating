@@ -31,7 +31,7 @@ print(device)
 
 ray.init(address='auto')
 print(f'Ray gpus: {ray.get_gpu_ids()}')
-print(f'{ray.cluster_resources()['GPU']=} GPUs available in Ray cluster')
+# print(f'{ray.cluster_resources()['GPU']=} GPUs available in Ray cluster')
 @ray.remote
 def square(x):
     return x * x, os.getpid(), socket.gethostname()
