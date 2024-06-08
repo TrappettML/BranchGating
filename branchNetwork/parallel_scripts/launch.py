@@ -25,9 +25,9 @@ DAYS = "{{DAYS}}"
 
 
 if 'talapas' in socket.gethostname():
-    template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
+    template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/sbatch_template.sh'
 else:
-    template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/gpu_sbatch_template.sh'
+    template_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/parallel_scripts/batch_template.sh'
 
 print(template_file)
 print(f'Path(__file__): {Path(__file__)}')        

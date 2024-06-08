@@ -19,8 +19,8 @@
 #SBATCH --gres=gpu:6
 
 #SBATCH --time={{DAYS}}-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
-#SBATCH --account=tau  ### Account used for job submission
-#SBATCH --mail-user=$mtrappet@uoregon.edu
+#SBATCH --account=XXX  ### Account used for job submission
+
 #SBATCH --mail-type=ALL
 
 

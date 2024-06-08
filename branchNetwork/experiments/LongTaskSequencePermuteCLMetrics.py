@@ -150,16 +150,16 @@ def setup_model(model_name: str,
     criterion = nn.CrossEntropyLoss()
     return model, optim, criterion
 
-def setup_loaders(permute_seeds: list[int], batch_size: int, n_test_tasks: int = 3):
-    test_tasks = permute_seeds[:n_test_tasks]
+def setup_loaders(rotation_angles: list[int], batch_size: int, n_test_tasks: int = 3):
+    test_tasks = rotation_angles[:n_test_tasks]
     train_loaders = dict()
     test_loaders = dict()
-    for seed in permute_seeds:
-        # test_loader, train_loader = load_permuted_flattened_mnist_data(batch_size, seed)
-        test_loader, train_loader = load_rotated_flattened_mnist_data(batch_size, rotation_in_degrees=seed)
-        train_loaders[seed] = train_loader
-        if seed in test_tasks:
-            test_loaders[seed] = test_loader
+    for angle in rotation_angles:
+        # test_loader, train_loader = load_permuted_flattened_mnist_data(batch_size, angle)
+        test_loader, train_loader = load_rotated_flattened_mnist_data(batch_size, rotation_in_degrees=angle)
+        train_loaders[angle] = train_loader
+        if angle in test_tasks:
+            test_loaders[angle] = test_loader
     return train_loaders, test_loaders
 
 # @timing_decorator
@@ -170,7 +170,7 @@ def train_model(model_name: str,
                 model_configs: dict[str, Union[int, float, list[int]]] = None):
 
     model, optimizer, criterion = setup_model(model_name, model_configs=model_configs, model_dict=model_dict)
-    train_loaders, test_loaders = setup_loaders(train_config['permute_seeds'], train_config['batch_size'], train_config['n_test_tasks'])
+    train_loaders, test_loaders = setup_loaders(train_config['rotation_angles'], train_config['batch_size'], train_config['n_test_tasks'])
     
     all_task_eval_accuracies = {}
     all_first_last_data = []
@@ -239,7 +239,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     n_b_1 =  configs['n_b_1'] if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
     # rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
-    permute_seeds = configs['permute_seeds'] if 'permute_seeds' in configs.keys() else [0]
+    rotation_angles = configs['rotation_angles'] if 'rotation_angles' in configs.keys() else [0]
     epochs_per_task = configs['epochs_per_task']
     batch_size = configs['batch_size']
     MODEL = configs['model_name']
@@ -248,14 +248,14 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
-                    'permute_seeds': permute_seeds,
+                    'rotation_angles': rotation_angles,
                     'n_test_tasks': 3,
                     'file_path': 'branchNetwork/data/longsequence/' if 'file_path' not in configs else configs['file_path'],
                     'file_name': 'longsequence_data' if 'file_name' not in configs else configs['file_name']}
     
     MODEL_CONFIGS = {'n_in': 784, 
                     'n_out': 10, 
-                    'n_contexts': len(TRAIN_CONFIGS['permute_seeds']), 
+                    'n_contexts': len(TRAIN_CONFIGS['rotation_angles']), 
                     'device': 'cpu' if 'device' not in configs else configs['device'], 
                     'n_npb': [get_n_npb(n_b_1, 784), get_n_npb(n_b_2, 784)], 
                     'n_branches': [n_b_1, n_b_2], 
@@ -281,9 +281,9 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
-    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], 'sequential_eval_task_metrics')
+    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'sequential_eval_task_metrics_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["repeat"]}')
     pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'all_task_accuracies_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["repeat"]}')
-
+    print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS["sparsity"]}, n_b_1 {n_b_1}, learn_gates {MODEL_CONFIGS["learn_gates"]}')
 
 
 
@@ -292,7 +292,7 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 60
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'permute_seeds': [int(i) for i in range(0, 360, int(360/angle_increments))], 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'rotation_angles': [int(i) for i in range(0, 360, int(360/angle_increments))], 
                                       'epochs_per_task': 2, 'batch_size': 32, 'gate_func': 'median', 'temp': 1.0, 'device': device})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
