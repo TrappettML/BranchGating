@@ -1,1 +1,1 @@
-python launch.py --exp-name test_ray --command "python test_ray.py" --num-nodes 2 --partition "gpu"
+python launch.py --exp-name gpu_test_ray --command "python test_ray.py" --num-nodes 5 --partition "gpu"
