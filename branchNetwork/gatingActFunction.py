@@ -197,6 +197,9 @@ class BranchGatingActFunc(nn.Module):
     def eval(self):
         self.set_grads_to_false()
         return super().eval()
+    
+    def __repr__(self):
+        return super().__repr__() + f'\nBranchGatingActFunc(n_next_h={self.n_next_h}, \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\n learn_gates={self.learn_gates}, gate_func={self.gate_act_func.__name__}, device={self.device})'
         
         
 

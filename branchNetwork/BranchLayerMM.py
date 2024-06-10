@@ -54,6 +54,9 @@ class BranchLayer(nn.Module):
     def _output_shape(self):
         return (self.n_b, self.n_next_h)
     
+    def __repr__(self):
+        return super().__repr__() + f'\nBranchLayer(n_in={self.n_in}, n_npb={self.n_npb}, n_b={self.n_b}, n_next_h={self.n_next_h})'
+    
     
     
 def test_branch_layer():

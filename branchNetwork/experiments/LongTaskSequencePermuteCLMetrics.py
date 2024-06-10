@@ -150,11 +150,11 @@ def setup_model(model_name: str,
     criterion = nn.CrossEntropyLoss()
     return model, optim, criterion
 
-def setup_loaders(rotation_angles: list[int], batch_size: int, n_test_tasks: int = 3):
-    test_tasks = rotation_angles[:n_test_tasks]
+def setup_loaders(rotation_degrees: list[int], batch_size: int, n_test_tasks: int = 3):
+    test_tasks = rotation_degrees[:n_test_tasks]
     train_loaders = dict()
     test_loaders = dict()
-    for angle in rotation_angles:
+    for angle in rotation_degrees:
         # test_loader, train_loader = load_permuted_flattened_mnist_data(batch_size, angle)
         test_loader, train_loader = load_rotated_flattened_mnist_data(batch_size, rotation_in_degrees=angle)
         train_loaders[angle] = train_loader
@@ -170,7 +170,7 @@ def train_model(model_name: str,
                 model_configs: dict[str, Union[int, float, list[int]]] = None):
 
     model, optimizer, criterion = setup_model(model_name, model_configs=model_configs, model_dict=model_dict)
-    train_loaders, test_loaders = setup_loaders(train_config['rotation_angles'], train_config['batch_size'], train_config['n_test_tasks'])
+    train_loaders, test_loaders = setup_loaders(train_config['rotation_degrees'], train_config['batch_size'], train_config['n_test_tasks'])
     
     all_task_eval_accuracies = {}
     all_first_last_data = []
@@ -178,6 +178,7 @@ def train_model(model_name: str,
         task_accuracies, first_last_data = single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, train_config['epochs_per_task'], device=model_configs['device'])
         all_task_eval_accuracies[f'training_{str(task_name)}'] = task_accuracies
         all_first_last_data.append(first_last_data)
+        print(f'\n\n______________Finished training on task {task_name}______________\n\n')
     # set_trace()
     return {'model_name': model_name, 'task_evaluation_acc': all_task_eval_accuracies, 'first_last_data': all_first_last_data}
 
@@ -239,7 +240,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     n_b_1 =  configs['n_b_1'] if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
     # rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
-    rotation_angles = configs['rotation_angles'] if 'rotation_angles' in configs.keys() else [0]
+    rotation_degrees = configs['rotation_degrees'] if 'rotation_degrees' in configs.keys() else [0]
     epochs_per_task = configs['epochs_per_task']
     batch_size = configs['batch_size']
     MODEL = configs['model_name']
@@ -248,14 +249,14 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
-                    'rotation_angles': rotation_angles,
+                    'rotation_degrees': rotation_degrees,
                     'n_test_tasks': 3,
                     'file_path': 'branchNetwork/data/longsequence/' if 'file_path' not in configs else configs['file_path'],
                     'file_name': 'longsequence_data' if 'file_name' not in configs else configs['file_name']}
     
     MODEL_CONFIGS = {'n_in': 784, 
                     'n_out': 10, 
-                    'n_contexts': len(TRAIN_CONFIGS['rotation_angles']), 
+                    'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': 'cpu' if 'device' not in configs else configs['device'], 
                     'n_npb': [get_n_npb(n_b_1, 784), get_n_npb(n_b_2, 784)], 
                     'n_branches': [n_b_1, n_b_2], 
@@ -292,7 +293,7 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 60
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'rotation_angles': [int(i) for i in range(0, 360, int(360/angle_increments))], 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, int(360/angle_increments))], 
                                       'epochs_per_task': 2, 'batch_size': 32, 'gate_func': 'median', 'temp': 1.0, 'device': device})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')

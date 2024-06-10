@@ -19,10 +19,10 @@ class BranchModel(nn.Module):
             gate_func = model_configs['gate_func'] if 'gate_func' in model_configs else 'sum'
             temp = model_configs['temp'] if 'temp' in model_configs else 1
             # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
-            self.layer_1 = BranchLayer(model_configs['n_in'],
-                                      model_configs['n_npb'][0],
-                                       model_configs['n_branches'][0],
-                                       784, # number of next layer's inputs
+            self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
+                                      n_npb=model_configs['n_npb'][0],
+                                       n_b = model_configs['n_branches'][0],
+                                       n_next_h=784, # number of next layer's inputs
                                        device=model_configs['device'],
                                        )
             self.gating_1 = BranchGatingActFunc(784,
