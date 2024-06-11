@@ -21,7 +21,7 @@ def run_tune():
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['MasseModel']
     MODEL_NAMES = ['BranchModel']
-    layer_1_branches = [14,28,49,98,196,392,784]
+    layer_1_branches = [14,28,49,98,196,392,784] # 1,2, 7 done on voltar
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
@@ -44,7 +44,7 @@ def run_tune():
     param_config['epochs_per_task'] = 20
     param_config['n_eval_tasks'] = 3
     param_config['learn_gates'] = tune.grid_search([False])
-    param_config['sparsity'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, ]) # 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+    param_config['sparsity'] = tune.grid_search([0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) #tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, ]) # 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
     # param_config['gate_func'] = tune.grid_search(['sum', 'max', 'softmax', 'softmax_sum'])
     
     # need to allocate cpus for sub processes see: 

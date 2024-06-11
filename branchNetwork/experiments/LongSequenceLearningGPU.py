@@ -41,7 +41,7 @@ def run_tune():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
         elif 'voltar' in socket.gethostname():
-            ray.init(num_cpus=10, num_gpus=3)
+            ray.init(num_cpus=20, num_gpus=3)
         elif 'saturn' in socket.gethostname():
             ray.init(num_cpus=10, num_gpus=2)
         else:
@@ -51,7 +51,7 @@ def run_tune():
     epochs_per_task = 20
     learn_gates = False
     if 'voltar' in socket.gethostname():
-        sparsities = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+        sparsities = [0.6, 0.7, 0.8, 0.9, 1.0]
     if 'saturn' in socket.gethostname():
         sparsities = [0.6, 0.7, 0.8, 0.9, 1.0]
     elif 'talapas' in socket.gethostname():
@@ -59,7 +59,7 @@ def run_tune():
     # param_config['gate_func'] = tune.grid_search(['sum', 'max', 'softmax', 'softmax_sum'])
     path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/Rotate_LongSequence/'
     result_refs = []
-    MAX_NUM_PENDING_TASKS = 20
+    MAX_NUM_PENDING_TASKS = 40
     run_results = []
     config_list = [{'model_name': model_name,
                     'n_repeat': repeat,
