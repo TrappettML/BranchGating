@@ -60,7 +60,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='LongLearning_rotate_')
+        run_config=train.RunConfig(name='LongLearning_rotate_2')
     )
     results = tuner.fit()
     ray.shutdown()
@@ -69,9 +69,9 @@ def run_tune():
 
 def process_results(results: pd.DataFrame, file_name):
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/hyper_search/Rotate_LongSequence/'
+        path = '/home/mtrappet/branchNetwork/data/hyper_search/Rotate_LongSequence2/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/Rotate_LongSequence/'
+        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/Rotate_LongSequence2/'
     if not os.path.exists(path):
         os.makedirs(path)
     results.to_pickle(f'{path}/{file_name}.pkl')
