@@ -286,8 +286,8 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
-    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'sequential_eval_task_metrics_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["repeat"]}')
-    pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'all_task_accuracies_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["repeat"]}')
+    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'sequential_eval_task_metrics_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["n_repeat"]}')
+    pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'all_task_accuracies_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["n_repeat"]}')
     print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS["sparsity"]}, n_b_1 {n_b_1}, learn_gates {MODEL_CONFIGS["learn_gates"]}')
 
 

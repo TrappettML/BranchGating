@@ -21,7 +21,7 @@ def run_tune():
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['MasseModel']
     MODEL_NAMES = ['BranchModel']
-    layer_1_branches = [1,2,7] # [14,28,49,98,196,392,784] # 1,2, 7 done on voltar
+    layer_1_branches = [1,2,7,14,]  # 49,98,196,392,784
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
@@ -38,7 +38,7 @@ def run_tune():
     param_config = BASE_CONFIG
     param_config['file_path'] = path
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
-    param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])
+    param_config['n_repeat'] = tune.grid_search([0, 2, 3, 4, 5])
     param_config['rotation_degrees'] = [0, 180, 90, 270, 45, 135, 225, 315, 60, 150, 240, 330]
     param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 20
