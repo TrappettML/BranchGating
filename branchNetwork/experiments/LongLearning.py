@@ -21,7 +21,7 @@ def run_tune():
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['MasseModel']
     MODEL_NAMES = ['BranchModel']
-    layer_1_branches = [14,28,49,98,196,392,784] # 1,2, 7 done on voltar
+    layer_1_branches = [1,2,7] # [14,28,49,98,196,392,784] # 1,2, 7 done on voltar
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
@@ -44,7 +44,8 @@ def run_tune():
     param_config['epochs_per_task'] = 20
     param_config['n_eval_tasks'] = 3
     param_config['learn_gates'] = tune.grid_search([False])
-    param_config['sparsity'] = tune.grid_search([0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) #tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, ]) # 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+    # param_config['sparsity'] = tune.grid_search([0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) #tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, ]) # 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+    param_config['sparsity'] = tune.grid_search([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 ,1.0])
     # param_config['gate_func'] = tune.grid_search(['sum', 'max', 'softmax', 'softmax_sum'])
     
     # need to allocate cpus for sub processes see: 
@@ -60,7 +61,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='LongLearning_rotate_2')
+        run_config=train.RunConfig(name='LongLearning_rotate_3')
     )
     results = tuner.fit()
     ray.shutdown()
@@ -69,9 +70,9 @@ def run_tune():
 
 def process_results(results: pd.DataFrame, file_name):
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/hyper_search/Rotate_LongSequence2/'
+        path = '/home/mtrappet/branchNetwork/data/hyper_search/Rotate_LongSequence3/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/Rotate_LongSequence2/'
+        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/Rotate_LongSequence3/'
     if not os.path.exists(path):
         os.makedirs(path)
     results.to_pickle(f'{path}/{file_name}.pkl')
