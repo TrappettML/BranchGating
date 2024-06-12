@@ -1,1 +1,1 @@
-python launch.py --exp-name LongSparseRotate3 --command "python ../experiments/LongLearning.py" --num-nodes 25 --partition "compute_intel,compute" --days 1
+python launch.py --exp-name LongSparseRotateRepeats --command "python ../experiments/LongLearning.py" --num-nodes 25 --partition "compute_intel,compute" --days 1

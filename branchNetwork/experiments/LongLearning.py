@@ -61,7 +61,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='LongLearning_rotate_3')
+        run_config=train.RunConfig(name='LongLearning_rotate_repeats')
     )
     results = tuner.fit()
     ray.shutdown()
