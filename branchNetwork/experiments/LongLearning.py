@@ -19,8 +19,8 @@ os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 def run_tune():
     # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
-    MODEL_NAMES = ['MasseModel']
-    # MODEL_NAMES = ['BranchModel']
+    # MODEL_NAMES = ['MasseModel']
+    MODEL_NAMES = ['BranchModel']
     layer_1_branches = [1,2,7,14,]  # 49,98,196,392,784
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
