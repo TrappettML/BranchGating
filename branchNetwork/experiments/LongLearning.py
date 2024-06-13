@@ -19,8 +19,8 @@ os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 def run_tune():
     # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
-    # MODEL_NAMES = ['MasseModel']
-    MODEL_NAMES = ['BranchModel']
+    MODEL_NAMES = ['MasseModel']
+    # MODEL_NAMES = ['BranchModel']
     layer_1_branches = [1,2,7,14,]  # 49,98,196,392,784
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
@@ -30,15 +30,15 @@ def run_tune():
         if 'talapas' in socket.gethostname():
             ray.init(address='auto')
         else:
-            ray.init(num_cpus=60)
+            ray.init(num_cpus=50)
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/'
+        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/Masse/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/'
+        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/Masse/'
     param_config = BASE_CONFIG
     param_config['file_path'] = path
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
-    param_config['n_repeat'] = tune.grid_search([0, 2, 3, 4, 5])
+    param_config['n_repeat'] = tune.grid_search([i for i in range(repeats)])
     param_config['rotation_degrees'] = [0, 180, 90, 270, 45, 135, 225, 315, 60, 150, 240, 330]
     param_config['n_b_1'] = tune.grid_search(layer_1_branches)
     param_config['epochs_per_task'] = 20
@@ -61,7 +61,7 @@ def run_tune():
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name='LongLearning_rotate_repeats')
+        run_config=train.RunConfig(name='Masse_LongLearning_rotate_repeats')
     )
     results = tuner.fit()
     ray.shutdown()
