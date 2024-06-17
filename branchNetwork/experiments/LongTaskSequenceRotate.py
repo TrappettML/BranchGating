@@ -23,13 +23,14 @@ import time
 
 
 # Function to train the model for one epoch
-def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
+def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu', debug=False):
     model.train()
     # print(f'begining train epoch')
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
-        # if i > 2:
-        #     break
+        if debug:
+            if i > 2:
+                break
         # set_trace()
         images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
@@ -40,15 +41,16 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu'):
         total_loss += loss.item()
     return total_loss / len(data_loader)
 
-def evaluate_model(model, task, data_loader, criterion, device='cpu'):
+def evaluate_model(model, task, data_loader, criterion, device='cpu', debug=False):
     model.eval()
     # print(f'beinging evaluation')
     correct, total = 0, 0
     total_loss = 0
     with torch.no_grad():
         for i, (images, labels) in enumerate(data_loader):
-            # if i>2:
-            #     break
+            if debug:
+                if i>2:
+                    break
             # set_trace()
             images, labels = images.to(device), labels.to(device)
             outputs = model(images, task)
@@ -61,8 +63,8 @@ def evaluate_model(model, task, data_loader, criterion, device='cpu'):
     return accuracy, total_loss / len(data_loader)
 
 # @ray.remote
-def _evaluate_model(model, task, test_loader, criterion, device='cpu'):
-    return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
+def _evaluate_model(model, task, test_loader, criterion, device='cpu', debug=False):
+    return {task: evaluate_model(model, task, test_loader, criterion, device=device, debug=debug)}
 
 
 
@@ -70,21 +72,21 @@ def get_ray_evaluate_model(device='cpu'):
     print(f'get_ray_evaluate_model: device: {device}')
     if device == 'cuda' or device == torch.device('cuda'):
         @ray.remote(num_gpus=0.125)
-        def gpu_evaluate_model(model, task, test_loader, criterion, device=device):
-            return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
+        def gpu_evaluate_model(model, task, test_loader, criterion, device=device, debug=False):
+            return {task: evaluate_model(model, task, test_loader, criterion, device=device, debug=debug)}
         return gpu_evaluate_model
     elif device == 'cpu' or device == torch.device('cpu'):
         @ray.remote
-        def cpu_evaluate_model(model, task, test_loader, criterion, device=device):
-            return {task: evaluate_model(model, task, test_loader, criterion, device=device)}
+        def cpu_evaluate_model(model, task, test_loader, criterion, device=device, debug=False):
+            return {task: evaluate_model(model, task, test_loader, criterion, device=device, debug=debug)}
         return cpu_evaluate_model
  
-def evaluate_all_models(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device='cpu'):
+def evaluate_all_models(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device: str='cpu', debug: bool=False):
     if not ray.is_initialized():
-            results = [_evaluate_model(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()]
+            results = [_evaluate_model(model, task, test_loader, criterion, device=device, debug=debug) for task, test_loader in test_loaders.items()]
     else:
         _ray_eval_model = get_ray_evaluate_model(device)
-        results = ray.get([_ray_eval_model.remote(model, task, test_loader, criterion, device=device) for task, test_loader in test_loaders.items()])
+        results = ray.get([_ray_eval_model.remote(model, task, test_loader, criterion, device=device, debug=debug) for task, test_loader in test_loaders.items()])
     return results # list of dictionaries
 
 def calc_remembering(A_acc_1: float, A_acc_2: float) -> float:
@@ -128,13 +130,14 @@ def single_task(model:nn.Module,
                 criterion: Callable, 
                 epochs: int,
                 # model_aggregated_results: OrderedDict['str', Union[str, list[float]]], 
-                device:str = 'cpu'):
+                device:str = 'cpu',
+                debug: bool = False):
     # model.train()
     task_accuracies = {}
     print(f'begining training model {model} on task {train_task}')
     for epoch in range(epochs):
-        train_loss = train_epoch(model, train_loader, train_task, optimizer, criterion, device=device)
-        test_results = evaluate_all_models(model, test_loaders, criterion, device=device)
+        train_loss = train_epoch(model, train_loader, train_task, optimizer, criterion, device=device, debug=debug)
+        test_results = evaluate_all_models(model, test_loaders, criterion, device=device, debug=debug)
         task_accuracies = gather_task_accuracies(task_accuracies, test_results)
     eval_first_last_accuracies = get_first_last_accuracies(task_accuracies)
     single_task_data = {'train_task': train_task, 'eval_accuracies': eval_first_last_accuracies}
@@ -179,7 +182,8 @@ def train_model(model_name: str,
     all_task_eval_accuracies = {}
     all_first_last_data = []
     for task_name, task_loader in train_loaders.items():
-        task_accuracies, first_last_data = single_task(model, optimizer, task_loader, task_name, test_loaders, criterion, train_config['epochs_per_task'], device=model_configs['device'])
+        task_accuracies, first_last_data = single_task(model, optimizer, task_loader, task_name, test_loaders, criterion,
+                                                       train_config['epochs_per_task'], device=model_configs['device'], debug=train_config['debug'])
         all_task_eval_accuracies[f'training_{str(task_name)}'] = task_accuracies
         all_first_last_data.append(first_last_data)
         print(f'\n\n______________Finished Running on task {task_name}______________\n\n')
@@ -256,7 +260,8 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'rotation_degrees': rotation_degrees,
                     'n_eval_tasks': 3,
                     'file_path': 'branchNetwork/data/longsequence/' if 'file_path' not in configs else configs['file_path'],
-                    'file_name': 'longsequence_data' if 'file_name' not in configs else configs['file_name']}
+                    'file_name': 'longsequence_data' if 'file_name' not in configs else configs['file_name'],
+                    'debug': False if 'debug' not in configs else configs['debug'],}
     
     MODEL_CONFIGS = {'n_in': 784, 
                     'n_out': 10, 
@@ -268,7 +273,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'dropout': 0.5,
                     'hidden_layers': [784, 784],
                     'learn_gates': configs['learn_gates'] if 'learn_gates' in configs.keys() else False,
-                    'gate_func': configs['gate_func'] if 'gate_func' in configs.keys() else 'sum',
+                    'soma_func': configs['soma_func'] if 'soma_func' in configs.keys() else 'sum',
                     'temp': configs['temp'] if 'temp' in configs.keys() else 1.0,
                     }
 
@@ -298,7 +303,7 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
-                                      'epochs_per_task': 2, 'batch_size': 32, 'gate_func': 'median', 'temp': 1.0, 'device': device, 'repeat': 0, 'sparsity': 0.6, 'learn_gates': False})
+                                      'epochs_per_task': 2, 'batch_size': 32, 'soma_func': 'median', 'temp': 1.0, 'device': device, 'n_repeat': 0, 'sparsity': 0.6, 'learn_gates': False, 'debug': True})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')

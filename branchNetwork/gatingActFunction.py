@@ -1,10 +1,11 @@
 # __init__.py
-import torch as th
+
+import torch 
 from torch import nn
 from ipdb import set_trace
 
 class BranchGatingActFunc(nn.Module):
-    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, gate_func='sum',temp=1, device='cpu'):
+    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, soma_func='sum',temp=1, device='cpu'):
         '''
         args:
         - n_b (int): The number of branches.
@@ -30,42 +31,44 @@ class BranchGatingActFunc(nn.Module):
         self.seen_contexts = list()
         self.learn_gates = learn_gates
         self.current_context = None
-        self.gate_act_func = self.set_gate_func(gate_func, temp)
+        self.soma_act_func = self.set_soma_func(soma_func, temp)
         self.device = device
         if learn_gates:
             self.make_learnable_parameters()
             self.all_grads_false = False
             self.activate_current_context = False
     
-    def set_gate_func(self, gate_func, temp):
-        if gate_func == 'sum':
-            return th.sum
-        elif gate_func == 'median':
+    def set_soma_func(self, soma_func, temp):
+        if soma_func == 'sum':
+            def my_sum(x):
+                return torch.sum(x, dim=1)
+            return my_sum
+        elif soma_func == 'median':
             def my_median(x):
-                return th.median(x, dim=1)[0]
+                return torch.median(x, dim=1)[0]
             return my_median
-        elif gate_func == 'max':
+        elif soma_func == 'max':
             def my_max(x):
-                return th.max(x, dim=1)[0]
+                return torch.max(x, dim=1)[0]
             return my_max
-        elif gate_func == 'softmax':
+        elif soma_func == 'softmax':
             def my_softmax(x):
                 sm = nn.functional.softmax(x/temp, dim=1)
                 sm_2d = sm.view(-1, sm.size(1))
-                sampled_indices = th.multinomial(sm_2d, num_samples=1)
+                sampled_indices = torch.multinomial(sm_2d, num_samples=1)
                 sampled_indices = sampled_indices.view(x.size(0), x.size(2)) 
-                batch_indices = th.arange(x.size(0)).unsqueeze(-1).expand_as(sampled_indices)
-                max_x = x[batch_indices, batch_indices, th.arange(x.size(2))]
+                batch_indices = torch.arange(x.size(0)).unsqueeze(-1).expand_as(sampled_indices)
+                max_x = x[batch_indices, sampled_indices, torch.arange(x.size(2))]
                 return max_x
             return my_softmax
-        elif gate_func == 'softmax_sum':
+        elif soma_func == 'softmax_sum':
             def my_smx_sum(x):
                 sm = nn.functional.softmax(x/temp, dim=1)
                 sm_mm = x * sm
-                return th.sum(sm_mm, dim=1)
+                return torch.sum(sm_mm, dim=1)
             return my_smx_sum
         else:
-            raise ValueError(f"gate_func must be one of ['sum', 'max', 'softmax', 'softmax_sum'], got {gate_func}")
+            raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum'], got {soma_func}")
         
     def make_learnable_parameters(self):
         self.learnable_parameters = nn.ParameterDict()
@@ -81,23 +84,25 @@ class BranchGatingActFunc(nn.Module):
             return self.gen_branching_mask()
         
     def _gen_branching_mask(self):
-        return th.stack([self.generate_interpolated_array(self.n_b, self.sparsity) for _ in range(self.n_next_h)]).float().T
+        return torch.stack([self.generate_interpolated_array(self.n_b, self.sparsity) for _ in range(self.n_next_h)]).float().T
     
     def gen_branching_mask(self):
         t_i = self.get_transition_index()
-        mask = th.zeros(self.n_b, self.n_next_h, dtype=th.float32, device=self.device)
+        mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
         mask[:t_i, :] = 1
-        random_indices = th.argsort(th.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
-        mask = th.gather(mask, 0, random_indices)
+        random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
+        mask = torch.gather(mask, 0, random_indices)
         return mask
         
     def branch_forward(self, x, context=0):
         x = x.to(self.device)
         '''forward function for when n_b > 1
            sum over the n_b dimension'''
+        # set_trace()
         context = str(context)
         gate = self.get_context(context)
-        return th.sum(x * gate, dim=1) # x is shape (n_batches, n_b, n_next_h), and so we are summing over branches. 
+        # return torch.sum(x * gate, dim=1) # x is shape (n_batches, n_b, n_next_h), and so we are summing over branches. 
+        return self.soma_act_func(x * gate)
     
     def masse_forward(self, x, context=0):
         x = x.to(self.device)
@@ -140,7 +145,7 @@ class BranchGatingActFunc(nn.Module):
         local_mask = self.masks[context] != 0
         full_mask = self.masks[context].clone().detach().requires_grad_(False)
         full_mask[local_mask] = self.learnable_parameters[context]
-        return th.tanh(full_mask)
+        return torch.tanh(full_mask) # learnable gates should be between -1, 1
         # return full_mask
     
     def set_current_grad_true(self, context):
@@ -150,7 +155,8 @@ class BranchGatingActFunc(nn.Module):
         
     def get_transition_index(self):
         assert self.sparsity >= 0 and self.sparsity <= 1, "Sparsity must be a value between 0 and 1"
-        transition_index = round((self.n_b - 1) * (1 - self.sparsity))
+        potential_index = (self.n_b - 1) * (1 - self.sparsity)
+        transition_index = max(1, round(potential_index))
         return transition_index
     
     def generate_interpolated_array(self, x, sparsity):
@@ -173,15 +179,15 @@ class BranchGatingActFunc(nn.Module):
         transition_index = round((x - 1) * (1 - sparsity))
 
         # Create a tensor of 1's and 0's based on the transition index
-        output = th.zeros(x, dtype=th.float32, device=self.device)
+        output = torch.zeros(x, dtype=torch.float32, device=self.device)
         output[:transition_index + 1] = 1
         #permute the tensor randomly
-        output = output[th.randperm(x)]
+        output = output[torch.randperm(x)]
         return output    
         
     def make_learnable_gates(self, base):
         mask = base != 0
-        values = nn.init.kaiming_normal_(th.empty(mask.sum(),1, device=self.device)).squeeze(1).clone().detach().requires_grad_(True)
+        values = nn.init.kaiming_normal_(torch.empty(mask.sum(),1, device=self.device)).squeeze(1).clone().detach().requires_grad_(True)
         learnable_gates = nn.Parameter(values).requires_grad_(True)
         return learnable_gates
         
@@ -199,7 +205,7 @@ class BranchGatingActFunc(nn.Module):
         return super().eval()
     
     def __repr__(self):
-        return super().__repr__() + f'\nBranchGatingActFunc(n_next_h={self.n_next_h}, \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\n learn_gates={self.learn_gates}, gate_func={self.gate_act_func.__name__}, device={self.device})'
+        return super().__repr__() + f'\nBranchGatingActFunc(n_next_h={self.n_next_h}, \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\n learn_gates={self.learn_gates}, soma_func={self.soma_act_func.__name__}, device={self.device})'
         
         
 
@@ -211,7 +217,7 @@ def test_gating_act_func(branch=1):
     n_contexts = 2
     for sparsity in [0, 0.5, 1]:
         gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity)
-        x = th.rand(n_batches, n_b, n_next_h)
+        x = torch.rand(n_batches, n_b, n_next_h)
         out = gating(x)
         assert out.shape == (n_batches, n_next_h), f'Expected shape {(n_batches, n_next_h)}, got {out.shape}'
     print("GatingActFunc test passed")
@@ -223,7 +229,7 @@ def test_masse_act_func():
     n_contexts = 2
     for sparsity in [0, 0.5, 1]:
         masse_gate = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity)   
-        x = th.rand(n_batches, n_next_h)
+        x = torch.rand(n_batches, n_next_h)
         out = masse_gate(x)
         assert out.shape == (n_batches, n_next_h), f'Expected shape {(n_batches, n_next_h)}, got {out.shape}'
     print("MasseActFunc test passed")
@@ -235,7 +241,7 @@ def test_learnable_gates():
     n_contexts = 2
     for sparsity in [0, 0.5, 1]:
         gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity, learn_gates=True)
-        x = th.rand(n_batches, n_b, n_next_h)
+        x = torch.rand(n_batches, n_b, n_next_h)
         out = gating(x)
         assert out.shape == (n_batches, n_next_h), f'Expected shape {(n_batches, n_next_h)}, got {out.shape}'
     print("learnGates test passed")
@@ -250,7 +256,7 @@ def test_branch_gating_act_func():
     
     for sparsity in sparsity_values:
         gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, sparsity)
-        x = th.rand(n_batches, n_b, n_next_h)
+        x = torch.rand(n_batches, n_b, n_next_h)
         out = gating(x)
         
         # Check output shape
@@ -265,8 +271,8 @@ def test_branch_gating_act_func():
     print("All tests passed for BranchGatingActFunc")
     
     
-def test_gradient_backprop_multi_context(gate_func='sum',temp=1):
-    th.manual_seed(42)  # for reproducibility
+def test_gradient_backprop_multi_context(soma_func='sum',temp=1):
+    torch.manual_seed(42)  # for reproducibility
 
     n_batches = 5
     n_b = 3
@@ -277,16 +283,16 @@ def test_gradient_backprop_multi_context(gate_func='sum',temp=1):
 
     gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, 
                                  sparsity, learn_gates, 
-                                 gate_func=gate_func,temp=temp)
-    # print(f'gating gate_func: {gating.gate_act_func}')
+                                 soma_func=soma_func,temp=temp)
+    # print(f'gating soma_func: {gating.soma_act_func}')
     # Create a dummy optimizer, assuming learnable parameters are properly registered
-    optimizer = th.optim.SGD(gating.parameters(), lr=0.1)
-    
+    optimizer = torch.optim.SGD(gating.parameters(), lr=0.1)
+    # set_trace()
     for context_index in [None] + [range(n_contexts)] :
         # Simulate switching context
         # gating.set_context(context_index)  # Assuming there is a method to switch context
-        x = th.randn(n_batches, n_b, n_next_h, requires_grad=True)
-        target = th.randn(n_batches, n_next_h)  # Random target for loss computation
+        x = torch.randn(n_batches, n_b, n_next_h, requires_grad=True)
+        target = torch.randn(n_batches, n_next_h)  # Random target for loss computation
         
         # Training step
         gating.train()  # Set the module to training mode
@@ -305,7 +311,7 @@ def test_gradient_backprop_multi_context(gate_func='sum',temp=1):
 
         # Evaluation step
         gating.eval()  # Set the module to evaluation mode
-        with th.no_grad():
+        with torch.no_grad():
             output = gating(x)
         
         # Check if no gradients accumulate during evaluation
@@ -317,13 +323,64 @@ def test_gradient_backprop_multi_context(gate_func='sum',temp=1):
 
     print("Gradient management test across multiple contexts passed.")
     
+def test_soma_function_variation():
+    # Define the test input
+    test_input = torch.randn(10, 2, 784)  # Assuming the input dimensions need to be like this
+
+    # Define device
+    device = 'cpu'  # use 'cuda' if running on GPU
+
+    # List of gate functions to test
+    soma_functions = ['sum', 'median', 'max', 'softmax', 'softmax_sum']
+
+    # Dictionary to store outputs
+    outputs = {}
+
+    # Create an instance of the model for each gate function and store the output
+    for func in soma_functions:
+        model = BranchGatingActFunc(n_next_h=784, n_b=2, n_contexts=1, sparsity=0.5, learn_gates=False, soma_func=func, temp=10, device=device)
+        # set_trace()
+        model.to(device)
+        test_input = test_input.to(device)
+        
+        # Assuming a single context (context 0) for simplicity
+        output = model(test_input, context=0)
+        
+        # Store output
+        outputs[func] = output
+
+    keys = list(outputs.keys())
+    num_keys = len(keys)
+    similar_pairs = []
+
+    # Compare every pair of outputs
+    for i in range(num_keys):
+        for j in range(i + 1, num_keys):
+            output1 = outputs[keys[i]]
+            output2 = outputs[keys[j]]
+
+            # Check if outputs are close enough to be considered identical
+            if torch.allclose(output1, output2, atol=1e-6):
+                similar_pairs.append((keys[i], keys[j]))
+    
+    # Report findings
+    if similar_pairs:
+        for pair in similar_pairs:
+            print(f"Outputs for gate functions '{pair[0]}' and '{pair[1]}' are identical.")
+    else:
+        print("No identical outputs found among the tested gate functions.")
+
+    print("Test passed: All gate function outputs are different.")
+    
 if __name__ == "__main__":
     for b in [1,10, 20, 30 , 100]:
         test_gating_act_func()
-    test_masse_act_func()
-    test_learnable_gates()
-    test_branch_gating_act_func()
-    test_gradient_backprop_multi_context()
-    for gate_func in ['sum', 'max', 'softmax', 'softmax_sum']:
-        test_gradient_backprop_multi_context(gate_func)
-        print(f'Gradient backprop test passed for {gate_func} gate function')
+    # test_masse_act_func()
+    # test_learnable_gates()
+    # test_branch_gating_act_func()
+    # test_gradient_backprop_multi_context()
+    # for soma_func in ['sum', 'max', 'softmax', 'softmax_sum']:
+    #     test_gradient_backprop_multi_context(soma_func)
+    #     print(f'Gradient backprop test passed for {soma_func} gate function')
+    test_soma_function_variation()
+    

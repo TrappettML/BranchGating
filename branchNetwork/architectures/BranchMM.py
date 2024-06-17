@@ -16,39 +16,42 @@ class BranchModel(nn.Module):
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(BranchModel, self).__init__()
             learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
-            gate_func = model_configs['gate_func'] if 'gate_func' in model_configs else 'sum'
+            soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
             temp = model_configs['temp'] if 'temp' in model_configs else 1
             # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
+            layer_2_n_in = 784 if 'hidden_sizes' not in model_configs else model_configs['hidden_sizes'][0]
+            layer_3_n_in = 784 if 'hidden_sizes' not in model_configs else model_configs['hidden_sizes'][1]
+            
             self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
                                       n_npb=model_configs['n_npb'][0],
                                        n_b = model_configs['n_branches'][0],
-                                       n_next_h=784, # number of next layer's inputs
+                                       n_next_h=layer_2_n_in, # number of next layer's inputs
                                        device=model_configs['device'],
                                        )
-            self.gating_1 = BranchGatingActFunc(784,
+            self.gating_1 = BranchGatingActFunc(layer_2_n_in,
                                                 model_configs['n_branches'][0],
                                                 model_configs['n_contexts'],
                                                 model_configs['sparsity'],
                                                 learn_gates,
-                                                gate_func=gate_func,
+                                                soma_func=soma_func,
                                                 temp=temp,
                                                 device=model_configs['device'],)
-            self.layer_2 = BranchLayer(784,
+            self.layer_2 = BranchLayer(layer_2_n_in,
                                       model_configs['n_npb'][1],
                                        model_configs['n_branches'][1],
-                                       784,
+                                       layer_3_n_in,
                                        device=model_configs['device'])
-            self.gating_2 = BranchGatingActFunc(784,
+            self.gating_2 = BranchGatingActFunc(layer_3_n_in,
                                                 model_configs['n_branches'][1],
                                                 model_configs['n_contexts'],
                                                 model_configs['sparsity'],
                                                 learn_gates,
-                                                gate_func=gate_func,
+                                                soma_func=soma_func,
                                                 temp=temp,
                                                 device=model_configs['device'],
                                                 )
             
-            self.layer_3 = nn.Linear(784, model_configs['n_out'], device=model_configs['device'])
+            self.layer_3 = nn.Linear(layer_3_n_in, model_configs['n_out'], device=model_configs['device'])
             self.drop_out = nn.Dropout(model_configs['dropout'])
             self.act_func = nn.ReLU()  
                      
@@ -59,7 +62,7 @@ class BranchModel(nn.Module):
             return self.layer_3(x)
         
         
-def test_Branch(gate_func='sum', temp=1):
+def test_Branch(soma_func='sum', temp=1):
     model_configs = {'n_in': 784, 
                     'n_out': 10, 
                     'n_contexts': 5, 
@@ -69,7 +72,7 @@ def test_Branch(gate_func='sum', temp=1):
                     'sparsity': 0.8,
                     'dropout': 0,
                     'learn_gates': False,
-                    'gate_func': gate_func,
+                    'soma_func': soma_func,
                     'temp': temp}
     
     x = torch.rand(32, 784)
@@ -94,7 +97,7 @@ class TestBranchModelOnGPU(unittest.TestCase):
             'n_contexts': 5,
             'sparsity': 0.1,
             'learn_gates': True,
-            'gate_func': 'softmax',
+            'soma_func': 'softmax',
             'temp': 1.0,
             'dropout': 0.5,
             'device': 'cuda' if torch.cuda.is_available() else 'cpu'  # Check if GPU is available, otherwise use CPU
@@ -129,7 +132,7 @@ class TestBranchModelPerformance(unittest.TestCase):
             'n_contexts': 1,
             'sparsity': 0.1,
             'learn_gates': False,
-            'gate_func': 'sum',
+            'soma_func': 'sum',
             'temp': 1,
             'dropout': 0.5,
             'device': 'cpu'
@@ -192,13 +195,57 @@ class TestBranchModelPerformance(unittest.TestCase):
         else:
             print("CUDA is not available. Skipping GPU test.")
 
-        
+def test_branch_model_on_varied_configurations(soma_func='sum', temp=1):
+    # Define base model configuration
+    base_config = {
+        'n_in': 784, 
+        'n_out': 10, 
+        'n_contexts': 5, 
+        'device': 'cpu', 
+        'n_npb': [56, 56],  # Assumed to stay constant for this test
+        'n_branches': [1, 1],  # This will vary
+        'sparsity': 0.8,  # This will vary
+        'dropout': 0,
+        'learn_gates': False,
+        'soma_func': soma_func,
+        'temp': temp
+    }
+
+    # Test settings for number of branches and sparsity values
+    branch_counts = [[1, 1], [2, 2], [7,7]]  # Example branch configurations
+    sparsity_values = [0.5, 0.7, 0.9]  # Example sparsity configurations
+
+    # Random input tensor
+    x = torch.rand(32, 784)
+
+    # Iterating over each configuration
+    for branches in branch_counts:
+        for sparsity in sparsity_values:
+            print(f"Testing with {branches} branches and {sparsity} sparsity:")
+            # Update the model configuration for this test iteration
+            config = base_config.copy()
+            config['n_branches'] = branches
+            config['sparsity'] = sparsity
+            
+            # Create the model with the current configuration
+            branch_model = BranchModel(config)
+            
+            # Run the model for each context
+            for context in range(config['n_contexts']):
+                print(f'\tTesting context {context}:')
+                y = branch_model(x, context)
+                assert y.shape == (32, 10), "Output shape is incorrect"
+                print(f"\tTest passed. Output shape: {y.shape}")
+                print(f"\tOutput sum for this configuration: {y.sum().item()}")
+                
 if __name__ == '__main__':
     test_Branch()
     print('BranchModel test passed.')
-    for gate_func in ['sum', 'softmax', 'max']:
+    for soma_func in ['sum', 'softmax', 'max']:
         for temp in [0.1, 1, 10]:
-            test_Branch(gate_func, temp)
-            print(f'BranchModel test passed for gate_func: {gate_func} and temp: {temp}')
+            test_Branch(soma_func, temp)
+            print(f'BranchModel test passed for soma_func: {soma_func} and temp: {temp}')
+    test_branch_model_on_varied_configurations()
+    
             
     unittest.main()

@@ -34,7 +34,7 @@ class BranchLayer(nn.Module):
         # local_weights[local_mask] = self.w
         local_weights[self.all_branch_indices, th.arange(local_weights.shape[1])] = self.w
         # mask_w = self.mask * self.w
-        x = x @ local_weights
+        x = x @ local_weights # Branch Operation (soma operation in gatingActFunction.py)
         x = x.view(-1, self.n_b, self.n_next_h)
         return x
         
