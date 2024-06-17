@@ -15,8 +15,7 @@
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
 ###### --gpus-per-task={{NUM_GPUS_PER_NODE}}
-### See this stack for gpu info: https://stackoverflow.com/questions/67091056/gpu-allocation-in-slurm-gres-vs-gpus-per-task-and-mpirun-vs-srun
-####SBATCH --gres=gpu:6
+
 
 #SBATCH --time={{DAYS}}-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
 #SBATCH --account=tau  ### Account used for job submission
@@ -27,7 +26,7 @@
 # Load modules or your own conda environment here
 # module load pytorch/v1.4.0-gpu
 # conda activate {{CONDA_ENV}}
-module load cuda/11.5.1
+
 {{LOAD_ENV}}
 
 ################# DON NOT CHANGE THINGS HERE UNLESS YOU KNOW WHAT YOU ARE DOING ###############
@@ -68,7 +67,7 @@ for ((i = 1; i <= $worker_num; i++)); do
   node_i=${nodes_array[$i]}
   echo "STARTING WORKER $i at $node_i"
   srun --nodes=1 --ntasks=1 -w $node_i ray start --address $ip_head --redis-password=$redis_password --block &
-  sleep 5
+  sleep 10
 done
 
 ##############################################################################################
