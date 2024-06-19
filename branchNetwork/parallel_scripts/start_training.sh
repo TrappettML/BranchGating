@@ -1,1 +1,1 @@
-python launch.py --exp-name SomaFuncSearchMax --command "python ../experiments/LongLearning.py" --num-nodes 15 --partition "computelong_intel" --days 14
+python launch.py --exp-name SomaFuncSearchMax --command "python ../experiments/LongLearning.py" --num-nodes 15 --partition "compute_intel" --days 1
