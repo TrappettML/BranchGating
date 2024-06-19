@@ -4,6 +4,7 @@ from branchNetwork.architectures.BranchMM import BranchModel
 from branchNetwork.architectures.Expert import ExpertModel
 from branchNetwork.architectures.Masse import MasseModel
 from branchNetwork.architectures.Simple import SimpleModel
+from branchNetwork.architectures.SparseGradientANN import SparseGradientANN, AdamSI
 from branchNetwork.dataloader import load_permuted_flattened_mnist_data
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.utils.timing import timing_decorator
@@ -19,6 +20,7 @@ from pickle import dump
 import os
 import socket
 import time
+import re
 
 
 
@@ -153,7 +155,8 @@ def setup_model(model_name: str,
     
     assert model_name in model_dict.keys(), f'{model_name} not in model_dict'
     model = model_dict[model_name](model_configs)   
-    optim = torch.optim.Adam(model.parameters(), lr=0.001)
+    optim = torch.optim.Adam(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'])
+    # optim = AdamSI(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'], c=0.2)
     criterion = nn.CrossEntropyLoss()
     return model, optim, criterion
 
@@ -233,8 +236,23 @@ def process_all_sequence_metrics(first_last_data: list[dict[str, float]]) -> lis
     return sequence_results
 
 
-def get_n_npb(n_brances, n_in):
-    return int(n_in/n_brances)
+def get_n_npb(n_branches, n_in):
+    return int(n_in/n_branches)
+
+def dict_to_str(d: dict[str, Union[str, int, float]]) -> str:
+    s = ''
+    for k,v in d.items():
+        if isinstance(v, dict):
+            s_ = dict_to_str(v)
+            s += s_
+        else:
+            s_v, s_k = str(v), str(k)
+            cleaned_str = re.sub(r'[^0-9a-zA-Z,\.]', '', s_v)
+            # Step 2: Replace commas with underscores
+            cleaned_str = re.sub(r',', '_', cleaned_str)
+            s += f'_{s_k}_{cleaned_str}'
+    return s
+
 
 def pickle_data(data_to_be_saved, file_path, file_name):
     if not os.path.exists(file_path):
@@ -245,42 +263,48 @@ def pickle_data(data_to_be_saved, file_path, file_name):
 
 
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
-    n_b_1 =  configs['n_b_1'] if 'n_b_1' in configs.keys() else 14
+    n_b_1 = configs.get('n_b_1', 14) #  if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
     # rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
-    rotation_degrees = configs['rotation_degrees'] if 'rotation_degrees' in configs.keys() else [0]
+    rotation_degrees = configs.get('rotation_degrees', [0]) # ] if 'rotation_degrees' in configs.keys() else [0]
     epochs_per_task = configs['epochs_per_task']
     batch_size = configs['batch_size']
     MODEL = configs['model_name']
-    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel]
-    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel, SparseGradientANN]
+    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel', 'SparseANN']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
                     'rotation_degrees': rotation_degrees,
                     'n_eval_tasks': 3,
-                    'file_path': 'branchNetwork/data/longsequence/' if 'file_path' not in configs else configs['file_path'],
-                    'file_name': 'longsequence_data' if 'file_name' not in configs else configs['file_name'],
-                    'debug': False if 'debug' not in configs else configs['debug'],}
+                    'file_path': configs.get('file_path', '/branchNetwork/data/longsequence/'), # 'branchNetwork/data/longsequence/' if 'file_path' not in configs else configs['file_path'],
+                    'file_name': configs.get('file_name', '/longsequence_data'), # 'longsequence_data' if 'file_name' not in configs else configs['file_name'],
+                    'debug': configs.get('debug', False), #False if 'debug' not in configs else configs['debug'],
+                    }
     
-    MODEL_CONFIGS = {'n_in': 784, 
-                    'n_out': 10, 
+    MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
+                    'soma_func': configs.get('soma_func', 'sum'), 
+                    'temp': configs.get('temp', 1.0),
+                    # 'trainable_percent': configs.get('trainable_percent', 20) ,
+                    'l2': configs.get('l2', 0.0),
+                    'lr': configs.get('lr', 0.001),
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
-                    'device': 'cpu' if 'device' not in configs else configs['device'], 
+                    'device': configs.get('device', 'cpu'), 
+                    'dropout': 0.5,
                     'n_npb': [get_n_npb(n_b_1, 784), get_n_npb(n_b_2, 784)], 
                     'n_branches': [n_b_1, n_b_2], 
-                    'sparsity': configs['sparsity'] if 'sparsity' in configs.keys() else 0.0,
-                    'dropout': 0.5,
+                    'sparsity': configs.get('sparsity', 0.0), 
                     'hidden_layers': [784, 784],
-                    'learn_gates': configs['learn_gates'] if 'learn_gates' in configs.keys() else False,
-                    'soma_func': configs['soma_func'] if 'soma_func' in configs.keys() else 'sum',
-                    'temp': configs['temp'] if 'temp' in configs.keys() else 1.0,
+                    'n_in': 784, 
+                    'n_out': 10,                     
                     }
 
     if not ray.is_initialized():
         if configs['device'] == 'cuda':
             gpus = torch.cuda.device_count()
             ray.init(num_cpus=5, num_gpus=gpus)
+        if configs['debug'] == True:
+            ray.init(num_cpus=1, num_gpus=0)
         else:
             ray.init(num_cpus=5)
             
@@ -291,8 +315,15 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
-    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'sequential_eval_task_metrics_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["n_repeat"]}')
-    pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'all_task_accuracies_{MODEL}_sparsity_{MODEL_CONFIGS["sparsity"]}_n_b_1_{n_b_1}_learn_gates_{MODEL_CONFIGS["learn_gates"]}_repeat_{configs["n_repeat"]}')
+    for k in ['hidden_laeyrs', 'n_out', 'n_in', 'n_contexts', 'device', 'lr', 'dropout']:
+        if k in MODEL_CONFIGS.keys():
+            del MODEL_CONFIGS[k]
+    str_dict = dict_to_str(MODEL_CONFIGS | {'model_name': MODEL} | {'repeat': configs["n_repeat"]})
+    if len(str_dict) > 255:
+        str_dict = str_dict[:255]
+    pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'si_sequential_eval_task_metrics{str_dict}')
+    pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'si_all_task_accuracies{str_dict}')
+    pickle_data(f"{TRAIN_CONFIGS=}, {MODEL_CONFIGS=}", TRAIN_CONFIGS['file_path'], f'configs{str_dict}')
     print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS["sparsity"]}, n_b_1 {n_b_1}, learn_gates {MODEL_CONFIGS["learn_gates"]}')
 
 
@@ -302,8 +333,10 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
-                                      'epochs_per_task': 2, 'batch_size': 32, 'soma_func': 'median', 'temp': 1.0, 'device': device, 'n_repeat': 0, 'sparsity': 0.6, 'learn_gates': False, 'debug': True})
+    results = run_continual_learning({'model_name': 'SparseANN', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
+                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'median', 'temp': 1.0, 'device': device, 'n_repeat': 0, 
+                                      'sparsity': 0.6, 'learn_gates': False, 'debug': False, 'trainable_percent': 10, 'lr': 0.01,
+                                      'file_path': './branchNetwork/data/sparseGrad/', 'file_name': 'sparseGrad_data', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')
