@@ -21,7 +21,7 @@ def run_tune():
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['MasseModel']
     MODEL_NAMES = ['BranchModel']
-    layer_1_branches =  [1,2,7,14, 28, 49, 98, 196, 382, 784] # [14] # [49,98,196,392,784] # [1,2,7,14,] 
+    layer_1_branches =  [1, 2, 7, 14, 28, 49, 98, 196, 382, 784] # [14] # [49,98,196,392,784] # [1,2,7,14,] 
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
