@@ -4,7 +4,7 @@ from branchNetwork.architectures.BranchMM import BranchModel
 from branchNetwork.architectures.Expert import ExpertModel
 from branchNetwork.architectures.Masse import MasseModel
 from branchNetwork.architectures.Simple import SimpleModel
-from branchNetwork.architectures.SparseGradientANN import SparseGradientANN, AdamSI
+# from branchNetwork.architectures.SparseGradientANN import SparseGradientANN, AdamSI
 from branchNetwork.dataloader import load_permuted_flattened_mnist_data
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.utils.timing import timing_decorator
@@ -270,8 +270,8 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     epochs_per_task = configs['epochs_per_task']
     batch_size = configs['batch_size']
     MODEL = configs['model_name']
-    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel, SparseGradientANN]
-    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel', 'SparseANN']
+    MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel ]
+    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
@@ -333,9 +333,9 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'SparseANN', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
                                       'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'median', 'temp': 1.0, 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.6, 'learn_gates': False, 'debug': False, 'trainable_percent': 10, 'lr': 0.01,
+                                      'sparsity': 0.6, 'learn_gates': False, 'debug': False, 'lr': 0.01,
                                       'file_path': './branchNetwork/data/sparseGrad/', 'file_name': 'sparseGrad_data', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
