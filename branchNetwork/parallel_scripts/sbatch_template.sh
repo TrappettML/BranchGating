@@ -14,6 +14,7 @@
 
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task={{NUM_CPUS}}
 ###### --gpus-per-task={{NUM_GPUS_PER_NODE}}
 
 

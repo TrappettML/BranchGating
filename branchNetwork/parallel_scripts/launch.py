@@ -23,6 +23,14 @@ LOAD_ENV = "{{LOAD_ENV}}"
 CONDA_ENV = "{{CONDA_ENV}}"
 DAYS = "{{DAYS}}"
 
+def get_num_cpus():
+    """Execute the 'nproc' command to get the number of available CPUs."""
+    process = subprocess.Popen(['nproc'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    output, errors = process.communicate()
+    if process.returncode == 0:
+        return output.strip()  # Return the number of CPUs as a string
+    else:
+        raise RuntimeError(f"Failed to execute 'nproc': {errors}")
 
 if 'talapas' in socket.gethostname():
     template_file = '/home/mtrappet/BranchGating/branchNetwork/parallel_scripts/sbatch_template.sh'
@@ -74,7 +82,8 @@ if __name__ == '__main__':
         help="Specify which conda environment you want loaded. For example: --conda_env data-science")
     
     args = parser.parse_args()
-
+    num_cpus = get_num_cpus()
+    
     if args.node:
         # assert args.num_nodes == 1
         node_info = "#SBATCH -w {}".format(args.node)
@@ -99,6 +108,7 @@ if __name__ == '__main__':
     text = text.replace(COMMAND_SUFFIX, "")
     text = text.replace(CONDA_ENV, str(args.conda_env))
     text = text.replace(DAYS, str(args.days))
+    text = text.replace({{"NUM_CPUS"}}, num_cpus)
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO "
         "PRODUCTION!",
