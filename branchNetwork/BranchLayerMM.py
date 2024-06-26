@@ -29,7 +29,7 @@ class BranchLayer(nn.Module):
     
     def forward(self, x):
         x = x.to(self.device)
-        local_mask = self.mask != 0
+        # local_mask = self.mask != 0
         local_weights = self.mask.clone().detach().requires_grad_(False)
         # local_weights[local_mask] = self.w
         local_weights[self.all_branch_indices, th.arange(local_weights.shape[1])] = self.w

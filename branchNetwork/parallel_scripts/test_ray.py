@@ -4,6 +4,7 @@ import ray
 import os
 import socket
 import subprocess
+import pprint
 
 def run_nvidia_smi():
     # Command to run nvidia-smi
@@ -26,7 +27,7 @@ run_nvidia_smi()
 
 # Open a subprocess and run the command
 with subprocess.Popen(["lscpu"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
-    print(f'lscpu output:\n{proc.communicate()}')
+    pprint.pprint(f'lscpu output:\n{proc.communicate()}')
     
 # Get a specific environment variable
 cuda_home = os.getenv('CUDA_HOME')
