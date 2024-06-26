@@ -10,7 +10,7 @@
 
 ### This script works for any number of nodes, Ray will find and manage all resources
 #SBATCH --nodes={{NUM_NODES}}
-#SBATCH --exclusive
+
 
 ### Give all resources to a single Ray task, ray can manage the resources internally
 #SBATCH --ntasks-per-node=1
