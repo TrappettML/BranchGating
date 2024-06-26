@@ -108,7 +108,7 @@ if __name__ == '__main__':
     text = text.replace(COMMAND_SUFFIX, "")
     text = text.replace(CONDA_ENV, str(args.conda_env))
     text = text.replace(DAYS, str(args.days))
-    text = text.replace({{"NUM_CPUS"}}, num_cpus)
+    text = text.replace("{{NUM_CPUS}}", num_cpus)
     text = text.replace(
         "# THIS FILE IS A TEMPLATE AND IT SHOULD NOT BE DEPLOYED TO "
         "PRODUCTION!",
