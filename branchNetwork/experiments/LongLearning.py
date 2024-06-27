@@ -108,4 +108,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Call the main function with parsed arguments
-    main(int(args))
+    main(int(args.number))
