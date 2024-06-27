@@ -99,12 +99,13 @@ def main(chunk_num: int=0):
     
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process a list of integers.")
+    parser = argparse.ArgumentParser(description="Which branch number to run")
 
-    # Add an argument
-    parser.add_argument('numbers', metavar='N', type=int, nargs='+',
-                        help='an integer for the accumulator')
+    # Add an argument for a single integer
+    parser.add_argument('number', type=int, help='an integer input')
 
     # Parse the arguments
     args = parser.parse_args()
+
+    # Call the main function with parsed arguments
     main(int(args))
