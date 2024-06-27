@@ -53,16 +53,18 @@ class BranchGatingActFunc(nn.Module):
                 return torch.max(x, dim=1)[0]
             return my_max
         elif 'softmaxsum' in soma_func.lower():
-            pattern = 'softmaxsum_([0-9]+)'
-            temp = float(re.search(pattern, soma_func.lower()).group(1))
+            pattern = r'softmaxsum_([\d.]+)'
+            match = re.search(pattern, soma_func)
+            temp = float(match.group(1))
             def my_smx_sum(x):
                 sm = nn.functional.softmax(x/temp, dim=1)
                 sm_mm = x * sm
                 return torch.sum(sm_mm, dim=1)
             return my_smx_sum
         elif 'softmax' in soma_func.lower():
-            pattern = 'softmax_([0-9]+)'
-            temp = float(re.search(pattern, soma_func.lower()).group(1))
+            pattern = r'softmax_([\d.]+)'
+            match = re.search(pattern, soma_func)
+            temp = float(match.group(1))
             def my_softmax(x):
                 sm = nn.functional.softmax(x/temp, dim=1)
                 sm_2d = sm.view(-1, sm.size(1))
@@ -78,21 +80,21 @@ class BranchGatingActFunc(nn.Module):
     def make_learnable_parameters(self):
         self.learnable_parameters = nn.ParameterDict()
         for i in range(self.n_contexts):
-            self.masks[str(i)] = self.make_mask()
+            self.masks[str(i)] = self.gen_branching_mask()
             self.learnable_parameters['unsigned' + str(i)] = self.make_learnable_gates(self.masks[str(i)])
         
-    def make_mask(self):
-        if self.n_b == 1: # will be Masse style Model
-            mask = self.generate_interpolated_array(self.n_next_h)
-            return mask.float()
-        else:
-            return self.gen_branching_mask()
+    # def make_mask(self):
+    #     if self.n_b == 1: # will be Masse style Model
+    #         mask = self.generate_interpolated_array(self.n_next_h)
+    #         return mask.float()
+    #     else:
+    #         return self.gen_branching_mask()
         
     def _gen_branching_mask(self):
         return torch.stack([self.generate_interpolated_array(self.n_b) for _ in range(self.n_next_h)]).float().T
     
     def gen_branching_mask(self):
-        t_i = self.get_transition_index()
+        t_i = self.get_transition_index(self.n_b)
         mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
         mask[:t_i, :] = 1
         random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
@@ -124,7 +126,7 @@ class BranchGatingActFunc(nn.Module):
     def get_unlearning_context(self, context):
         '''check if context is in seen contexts, and return the index'''
         if context not in self.masks:
-            self.masks[context] = self.make_mask()
+            self.masks[context] = self.gen_branching_mask()
             assert len(self.masks) <= self.n_contexts, "Contexts are more than the specified number" 
         return self.masks[context]
     
@@ -284,7 +286,7 @@ def test_gradient_backprop_multi_context(soma_func='sum',temp=1):
 
     gating = BranchGatingActFunc(n_next_h, n_b, n_contexts, 
                                  sparsity, learn_gates, 
-                                 soma_func=soma_func,temp=temp)
+                                 soma_func=soma_func)
     # print(f'gating soma_func: {gating.soma_act_func}')
     # Create a dummy optimizer, assuming learnable parameters are properly registered
     optimizer = torch.optim.SGD(gating.parameters(), lr=0.1)
@@ -332,14 +334,14 @@ def test_soma_function_variation():
     device = 'cpu'  # use 'cuda' if running on GPU
 
     # List of gate functions to test
-    soma_functions = ['sum', 'median', 'max', 'softmax', 'softmax_sum']
+    soma_functions = ['sum', 'median', 'max', 'softmax_2.0', 'softmaxsum_2.0']
 
     # Dictionary to store outputs
     outputs = {}
 
     # Create an instance of the model for each gate function and store the output
     for func in soma_functions:
-        model = BranchGatingActFunc(n_next_h=784, n_b=2, n_contexts=1, sparsity=0.5, learn_gates=False, soma_func=func, temp=10, device=device)
+        model = BranchGatingActFunc(n_next_h=784, n_b=2, n_contexts=1, sparsity=0.5, learn_gates=False, soma_func=func, device=device)
         # set_trace()
         model.to(device)
         test_input = test_input.to(device)
@@ -376,12 +378,12 @@ def test_soma_function_variation():
 if __name__ == "__main__":
     for b in [1,10, 20, 30 , 100]:
         test_gating_act_func()
-    # test_masse_act_func()
-    # test_learnable_gates()
-    # test_branch_gating_act_func()
-    # test_gradient_backprop_multi_context()
-    # for soma_func in ['sum', 'max', 'softmax', 'softmax_sum']:
-    #     test_gradient_backprop_multi_context(soma_func)
-    #     print(f'Gradient backprop test passed for {soma_func} gate function')
+    test_masse_act_func()
+    test_learnable_gates()
+    test_branch_gating_act_func()
+    test_gradient_backprop_multi_context()
+    for soma_func in ['sum', 'max', 'softmax_2.0', 'softmaxsum_2.0']:
+        test_gradient_backprop_multi_context(soma_func)
+        print(f'Gradient backprop test passed for {soma_func} gate function')
     test_soma_function_variation()
     
