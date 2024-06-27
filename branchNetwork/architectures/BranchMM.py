@@ -34,7 +34,6 @@ class BranchModel(nn.Module):
                                                 model_configs['sparsity'],
                                                 learn_gates,
                                                 soma_func=soma_func,
-                                                temp=temp,
                                                 device=model_configs['device'],)
             self.layer_2 = BranchLayer(layer_2_n_in,
                                       model_configs['n_npb'][1],
@@ -47,7 +46,6 @@ class BranchModel(nn.Module):
                                                 model_configs['sparsity'],
                                                 learn_gates,
                                                 soma_func=soma_func,
-                                                temp=temp,
                                                 device=model_configs['device'],
                                                 )
             
@@ -62,7 +60,7 @@ class BranchModel(nn.Module):
             return self.layer_3(x)
         
         
-def test_Branch(soma_func='sum', temp=1):
+def test_Branch(soma_func='sum'):
     model_configs = {'n_in': 784, 
                     'n_out': 10, 
                     'n_contexts': 5, 
@@ -73,7 +71,7 @@ def test_Branch(soma_func='sum', temp=1):
                     'dropout': 0,
                     'learn_gates': False,
                     'soma_func': soma_func,
-                    'temp': temp}
+                    }
     
     x = torch.rand(32, 784)
     
@@ -97,8 +95,7 @@ class TestBranchModelOnGPU(unittest.TestCase):
             'n_contexts': 5,
             'sparsity': 0.1,
             'learn_gates': True,
-            'soma_func': 'softmax',
-            'temp': 1.0,
+            'soma_func': 'softmax_1.0',
             'dropout': 0.5,
             'device': 'cuda' if torch.cuda.is_available() else 'cpu'  # Check if GPU is available, otherwise use CPU
         }
@@ -133,7 +130,6 @@ class TestBranchModelPerformance(unittest.TestCase):
             'sparsity': 0.1,
             'learn_gates': False,
             'soma_func': 'sum',
-            'temp': 1,
             'dropout': 0.5,
             'device': 'cpu'
         }
@@ -195,7 +191,7 @@ class TestBranchModelPerformance(unittest.TestCase):
         else:
             print("CUDA is not available. Skipping GPU test.")
 
-def test_branch_model_on_varied_configurations(soma_func='sum', temp=1):
+def test_branch_model_on_varied_configurations(soma_func='sum'):
     # Define base model configuration
     base_config = {
         'n_in': 784, 
@@ -208,7 +204,6 @@ def test_branch_model_on_varied_configurations(soma_func='sum', temp=1):
         'dropout': 0,
         'learn_gates': False,
         'soma_func': soma_func,
-        'temp': temp
     }
 
     # Test settings for number of branches and sparsity values
@@ -243,7 +238,9 @@ if __name__ == '__main__':
     print('BranchModel test passed.')
     for soma_func in ['sum', 'softmax', 'max']:
         for temp in [0.1, 1, 10]:
-            test_Branch(soma_func, temp)
+            if 'soft' in soma_func:
+                soma_func = soma_func + '_' + str(temp)
+            test_Branch(soma_func)
             print(f'BranchModel test passed for soma_func: {soma_func} and temp: {temp}')
     test_branch_model_on_varied_configurations()
     

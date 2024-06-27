@@ -3,9 +3,10 @@
 import torch 
 from torch import nn
 from ipdb import set_trace
+import re
 
 class BranchGatingActFunc(nn.Module):
-    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, soma_func='sum',temp=1, device='cpu'):
+    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, soma_func='sum', device='cpu'):
         '''
         args:
         - n_b (int): The number of branches.
@@ -31,14 +32,14 @@ class BranchGatingActFunc(nn.Module):
         self.seen_contexts = list()
         self.learn_gates = learn_gates
         self.current_context = None
-        self.soma_act_func = self.set_soma_func(soma_func, temp)
+        self.soma_act_func = self.set_soma_func(soma_func)
         self.device = device
         if learn_gates:
             self.make_learnable_parameters()
             self.all_grads_false = False
             self.activate_current_context = False
     
-    def set_soma_func(self, soma_func, temp):
+    def set_soma_func(self, soma_func):
         if soma_func == 'sum':
             def my_sum(x):
                 return torch.sum(x, dim=1)
@@ -51,7 +52,17 @@ class BranchGatingActFunc(nn.Module):
             def my_max(x):
                 return torch.max(x, dim=1)[0]
             return my_max
-        elif soma_func == 'softmax':
+        elif 'softmaxsum' in soma_func.lower():
+            pattern = 'softmaxsum_([0-9]+)'
+            temp = float(re.search(pattern, soma_func.lower()).group(1))
+            def my_smx_sum(x):
+                sm = nn.functional.softmax(x/temp, dim=1)
+                sm_mm = x * sm
+                return torch.sum(sm_mm, dim=1)
+            return my_smx_sum
+        elif 'softmax' in soma_func.lower():
+            pattern = 'softmax_([0-9]+)'
+            temp = float(re.search(pattern, soma_func.lower()).group(1))
             def my_softmax(x):
                 sm = nn.functional.softmax(x/temp, dim=1)
                 sm_2d = sm.view(-1, sm.size(1))
@@ -61,12 +72,6 @@ class BranchGatingActFunc(nn.Module):
                 max_x = x[batch_indices, sampled_indices, torch.arange(x.size(2))]
                 return max_x
             return my_softmax
-        elif soma_func == 'softmax_sum':
-            def my_smx_sum(x):
-                sm = nn.functional.softmax(x/temp, dim=1)
-                sm_mm = x * sm
-                return torch.sum(sm_mm, dim=1)
-            return my_smx_sum
         else:
             raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum'], got {soma_func}")
         
@@ -78,13 +83,13 @@ class BranchGatingActFunc(nn.Module):
         
     def make_mask(self):
         if self.n_b == 1: # will be Masse style Model
-            mask = self.generate_interpolated_array(self.n_next_h, self.sparsity)
+            mask = self.generate_interpolated_array(self.n_next_h)
             return mask.float()
         else:
             return self.gen_branching_mask()
         
     def _gen_branching_mask(self):
-        return torch.stack([self.generate_interpolated_array(self.n_b, self.sparsity) for _ in range(self.n_next_h)]).float().T
+        return torch.stack([self.generate_interpolated_array(self.n_b) for _ in range(self.n_next_h)]).float().T
     
     def gen_branching_mask(self):
         t_i = self.get_transition_index()
@@ -153,13 +158,13 @@ class BranchGatingActFunc(nn.Module):
         self.learnable_parameters[context].requires_grad = True
         self.activate_current_context = True
         
-    def get_transition_index(self):
+    def get_transition_index(self, x):
         assert self.sparsity >= 0 and self.sparsity <= 1, "Sparsity must be a value between 0 and 1"
-        potential_index = (self.n_b - 1) * (1 - self.sparsity)
+        potential_index = (x - 1) * (1 - self.sparsity)
         transition_index = max(1, round(potential_index))
         return transition_index
     
-    def generate_interpolated_array(self, x, sparsity):
+    def generate_interpolated_array(self, x):
         """
         Generate a 1D tensor of size x, smoothly transitioning from 1's to 0's
         based on the input sparsity between 0 and 1.
@@ -171,12 +176,8 @@ class BranchGatingActFunc(nn.Module):
         Returns:
         - A Pyth tensor according to the specified rules.
         """
-        assert x > 0, "x must be greater than 0"
-        assert sparsity >= 0, "sparsity must be greater than or equal to 0"
-        assert sparsity <= 1, "sparsity must be less than or equal to 1"
-
         # Calculate the transition index based on the sparsity
-        transition_index = round((x - 1) * (1 - sparsity))
+        transition_index = self.get_transition_index(x)
 
         # Create a tensor of 1's and 0's based on the transition index
         output = torch.zeros(x, dtype=torch.float32, device=self.device)
