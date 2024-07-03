@@ -10,7 +10,7 @@
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
+#SBATCH --mem=16G
 
 
 #SBATCH --time=14-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
