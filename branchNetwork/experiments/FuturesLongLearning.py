@@ -1,5 +1,5 @@
 
-from branchNetwork.experiments.LongTaskSequenceRotate import run_continual_learning
+from branchNetwork.experiments.FuturesLongTaskSequenceRotate import run_continual_learning
 
 import torch
 import torch.nn as nn
