@@ -2,6 +2,7 @@
 import torch as th
 from torch import nn
 from ipdb import set_trace
+import unittest
 
 
 class BranchLayer(nn.Module):
@@ -72,6 +73,49 @@ def test_branch_layer():
     # set_trace()
     assert out.shape == (5, 2, 4)
     
+class TestBranchLayer(unittest.TestCase):
+    def setUp(self):
+        # Initialize BranchLayer with some test parameters
+        self.layer = BranchLayer(n_in=10, n_npb=5, n_b=3, n_next_h=4, device='cpu')
+
+    def test_average_weights_properties(self):
+        magnitudes = []
+        variances = []
+
+        for _ in range(10):
+            # Re-initialize weights each time to simulate different initializations
+            del self.layer.w
+            self.layer.create_weights()
+            weights = self.layer.w.data
+            
+            # Calculate magnitude and variance
+            magnitude = th.mean(th.abs(weights)).item()
+            variance = th.var(weights).item()
+            
+            # Store results
+            magnitudes.append(magnitude)
+            variances.append(variance)
+        # Convert lists to tensors for variance calculation
+        magnitudes_tensor = th.tensor(magnitudes)
+        variances_tensor = th.tensor(variances)
+
+        # Calculate average magnitude and variance
+        average_magnitude = th.mean(magnitudes_tensor).item()
+        average_variance = th.mean(variances_tensor).item()
+
+        # Calculate the variance of magnitudes and the variance of variances
+        variance_of_magnitudes = th.var(magnitudes_tensor).item()
+        variance_of_variances = th.var(variances_tensor).item()
+
+        print(f"Average magnitude of weights over 10 trials: {average_magnitude}")
+        print(f"Average variance of weights over 10 trials: {average_variance}")
+        print(f"Variance of magnitudes over 10 trials: {variance_of_magnitudes}")
+        print(f"Variance of variances over 10 trials: {variance_of_variances}")
+
+
+    
 if __name__ == '__main__':
     test_branch_layer()
     print("BranchLayer test passed!")
+    unittest.main()
+    

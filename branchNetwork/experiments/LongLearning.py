@@ -20,7 +20,7 @@ import argparse
 os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
 
 
-def run_tune(branch_num: int=0):
+def run_tune():
     # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
     # MODEL_NAMES = ['MasseModel']
@@ -30,7 +30,7 @@ def run_tune(branch_num: int=0):
     # layer_2_branches = [2, 10, 500, 1000]
     # layer_1_branches = [1,2]
     # layer_2_branches = [1,2]
-    repeats = 3
+    repeats = 1
     repeats_list = [i for i in range(repeats)]
     soma_funcs = ['softmax_0.1', 'softmax_1.0', 'softmax_2.0', 
                 'softmaxsum_0.1', 'softmaxsum_0.5', 'softmaxsum_1.0', 'softmaxsum_2.0',
@@ -43,15 +43,15 @@ def run_tune(branch_num: int=0):
         else:
             ray.init(num_cpus=140)
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/soma_func_branche_search/'
+        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/soma_func_branch_search2/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/soma_func_branch_search/'
+        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/soma_func_branch_search2/'
     param_config = BASE_CONFIG
     param_config['file_path'] = path
     param_config['model_name'] = tune.grid_search(MODEL_NAMES)
     param_config['n_repeat'] = tune.grid_search(repeats_list) # tune.grid_search([0, 2, 3, 4])
     param_config['rotation_degrees'] = [0, 180, 90, 270, 45, 135, 225, 315, 60, 150, 240, 330]
-    param_config['n_b_1'] = tune.grid_search([branches[branch_num]])
+    param_config['n_b_1'] = tune.grid_search(branches)
     param_config['epochs_per_task'] = 20
     param_config['n_eval_tasks'] = 3
     param_config['learn_gates'] = tune.grid_search([False])
@@ -72,26 +72,16 @@ def run_tune(branch_num: int=0):
         tune_config=tune.TuneConfig(num_samples=1, 
                                     metric="forward_transfer", 
                                     mode="max"),
-        run_config=train.RunConfig(name=f'BranchGating_Rotate_LongSequence_{branch_num}_soma_func_search')
+        run_config=train.RunConfig(name=f'SomaFuncSearch_BranchSearch')
     )
     results = tuner.fit()
     ray.shutdown()
     print(f'Best result: {results.get_best_result()}')
     return results.get_dataframe()
-
-# def process_results(results: pd.DataFrame, file_name):
-#     if 'talapas' in socket.gethostname():
-#         path = '/home/mtrappet/branchNetwork/data/hyper_search/Rotate_LongSequence4/'
-#     else:
-#         path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/hyper_search/Rotate_LongSequence4/'
-#     if not os.path.exists(path):
-#         os.makedirs(path)
-#     results.to_pickle(f'{path}/{file_name}.pkl')
-#     print(f'Saved results to {path}/{file_name}.pkl')
     
 def main(chunk_num: int=0):
     time_start = time.time()
-    results = run_tune(chunk_num)
+    run_tune(chunk_num)
     elapsed_time = time.time() - time_start
     print(f'Elapsed time: {elapsed_time} seconds')
     # process_results(results, 'sparsity_LearnGates_results')
@@ -108,4 +98,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Call the main function with parsed arguments
-    main(int(args.number))
+    main()

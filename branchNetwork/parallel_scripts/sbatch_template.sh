@@ -21,7 +21,8 @@
 #SBATCH --time={{DAYS}}-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
 #SBATCH --account=tau  ### Account used for job submission
 
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=all
+#SBATCH --mail-user=mtrappet@uoregon.edu
 
 
 # Load modules or your own conda environment here
