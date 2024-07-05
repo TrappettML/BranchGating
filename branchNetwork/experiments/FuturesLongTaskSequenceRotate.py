@@ -270,9 +270,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     
     MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
                     'soma_func': configs.get('soma_func', 'sum'), 
-                    # 'temp': configs.get('temp', 1.0),
-                    # 'trainable_percent': configs.get('trainable_percent', 20) ,
-                    # 'l2': configs.get('l2', 0.0),
+                    'l2': configs.get('l2', 0.0),
                     'lr': configs.get('lr', 0.001),
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
@@ -320,8 +318,8 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
-                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'median', 'temp': 1.0, 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.6, 'learn_gates': False, 'debug': False, 'lr': 0.01,
+                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'softmax_0.6', 'device': device, 'n_repeat': 0, 
+                                      'sparsity': 0.6, 'learn_gates': False, 'debug': True, 'lr': 0.01,
                                       'file_path': './branchNetwork/data/sparseGrad/', 'file_name': 'sparseGrad_data', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
