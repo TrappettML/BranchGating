@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=DistSomaFunc
+#SBATCH --job-name=ZeroSparse
 #SBATCH --output=Futures_Parallel/%x-%A-%a.out
 #SBATCH --error=Futures_Parallel/%x-%A-%a.err
 
