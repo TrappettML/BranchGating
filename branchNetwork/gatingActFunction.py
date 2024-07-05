@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from ipdb import set_trace
 import re
+import unittest
 
 class BranchGatingActFunc(nn.Module):
     def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, soma_func='sum', device='cpu'):
@@ -161,10 +162,19 @@ class BranchGatingActFunc(nn.Module):
         self.activate_current_context = True
         
     def get_transition_index(self, x):
+        """Test python code for number of 1 in the branch dimension for a sparsity, replace 2 with n_b
+        for i in range(10):
+            print(f'{i/10}: {round((2)*(1-(i/10)))}')
+        """
         assert self.sparsity >= 0 and self.sparsity <= 1, "Sparsity must be a value between 0 and 1"
-        potential_index = (x - 1) * (1 - self.sparsity)
-        transition_index = max(1, round(potential_index))
-        return transition_index
+        if self.sparsity == 0:
+            return x
+        if self.sparsity == 1:
+            return 1
+        else:
+            potential_index = (x) * (1 - self.sparsity)
+            transition_index = max(1, round(potential_index))
+            return transition_index
     
     def generate_interpolated_array(self, x):
         """
@@ -375,6 +385,33 @@ def test_soma_function_variation():
 
     print("Test passed: All gate function outputs are different.")
     
+class TestBranchGatingActFunc(unittest.TestCase):
+    def test_masks_sparsity(self):
+        # Test various combinations of branches and sparsity
+        combinations = [(b,s/10) for b in [1, 10, 20, 30, 100] for s in range(0,11,1)]
+        n_next_h = 10  # Set a fixed number of neurons in the next hidden layer for testing
+
+        for n_b, sparsity in combinations:
+            with self.subTest(n_b=n_b, sparsity=sparsity):
+                module = BranchGatingActFunc(n_next_h=n_next_h, n_b=n_b, sparsity=sparsity, device='cpu')
+                mask = module.gen_branching_mask()
+
+
+                # Determine the expected number of 1's per column based on sparsity
+                if sparsity == 1.0:
+                    expected_ones_per_column = 1
+                elif sparsity == 0.0 or n_b == 1:
+                    expected_ones_per_column = n_b
+                else:
+                    expected_ones_per_column = round(n_b * (1 - sparsity))
+
+                # Check each column individually
+                for col in range(mask.shape[1]):
+                    actual_ones = torch.sum(mask[:, col]).item()
+                    self.assertEqual(actual_ones, expected_ones_per_column, f"Column {col} expected {expected_ones_per_column} ones, got {actual_ones}\nMasks:\n{mask}")
+
+
+    
 if __name__ == "__main__":
     for b in [1,10, 20, 30 , 100]:
         test_gating_act_func()
@@ -386,4 +423,5 @@ if __name__ == "__main__":
         test_gradient_backprop_multi_context(soma_func)
         print(f'Gradient backprop test passed for {soma_func} gate function')
     test_soma_function_variation()
+    unittest.main()
     

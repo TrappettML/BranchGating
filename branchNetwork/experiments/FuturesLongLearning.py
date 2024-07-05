@@ -40,7 +40,7 @@ def run_tune(args):
         path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/soma_func_branch_search/'
     else:
         path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/soma_func_branch_search/'
-    param_config = BASE_CONFIG
+    param_config = {}
     param_config['file_path'] = path
     param_config['model_name'] = args.model_name
     param_config['n_repeat'] = args.repeat_num

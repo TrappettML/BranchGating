@@ -270,9 +270,9 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     
     MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
                     'soma_func': configs.get('soma_func', 'sum'), 
-                    'temp': configs.get('temp', 1.0),
+                    # 'temp': configs.get('temp', 1.0),
                     # 'trainable_percent': configs.get('trainable_percent', 20) ,
-                    'l2': configs.get('l2', 0.0),
+                    # 'l2': configs.get('l2', 0.0),
                     'lr': configs.get('lr', 0.001),
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
@@ -304,7 +304,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     for k in ['hidden_laeyrs', 'n_out', 'n_in', 'n_contexts', 'device', 'lr', 'dropout']:
         if k in MODEL_CONFIGS.keys():
             del MODEL_CONFIGS[k]
-    str_dict = dict_to_str(MODEL_CONFIGS | {'model_name': MODEL} | {'repeat': configs["n_repeat"]})
+    str_dict = dict_to_str(MODEL_CONFIGS | {'model_name': MODEL} | {'repeat': configs["n_repeat"]} |{'epochs_per_task': TRAIN_CONFIGS['epochs_per_task']})
     if len(str_dict) > 255:
         str_dict = str_dict[:255]
     pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'si_sequential_eval_task_metrics{str_dict}')
