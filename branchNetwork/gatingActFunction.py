@@ -75,8 +75,17 @@ class BranchGatingActFunc(nn.Module):
                 max_x = x[batch_indices, sampled_indices, torch.arange(x.size(2))]
                 return max_x
             return my_softmax
+        elif 'lse' in soma_func.lower():
+            pattern = r'lse_([\d.]+)'
+            match = re.search(pattern, soma_func)
+            temp = float(match.group(1))
+            def my_lse(x):
+                ones = torch.ones(x.size(0), 1, x.size(2), device=x.device)
+                x = torch.cat((x, ones), dim=1)
+                return torch.logsumexp(x/temp, dim=1)
+            return my_lse
         else:
-            raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum'], got {soma_func}")
+            raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum', 'lse'], got {soma_func}")
         
     def make_learnable_parameters(self):
         self.learnable_parameters = nn.ParameterDict()
@@ -95,11 +104,22 @@ class BranchGatingActFunc(nn.Module):
         return torch.stack([self.generate_interpolated_array(self.n_b) for _ in range(self.n_next_h)]).float().T
     
     def gen_branching_mask(self):
-        t_i = self.get_transition_index(self.n_b)
-        mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
-        mask[:t_i, :] = 1
-        random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
-        mask = torch.gather(mask, 0, random_indices)
+        # Check if n_b is 1 to switch sparsity along n_next_h dimension
+        if self.n_b == 1:
+            # Generate a mask with sparsity along the n_next_h dimension
+            t_i = self.get_transition_index(self.n_next_h)
+            mask = torch.zeros(self.n_next_h, dtype=torch.float32, device=self.device)
+            mask[:t_i] = 1
+            random_indices = torch.argsort(torch.rand(self.n_next_h, device=self.device))
+            mask = mask[random_indices]
+            mask = mask.unsqueeze(0)  # Add a singleton dimension for compatibility
+        else:
+            # Generate a mask with sparsity along the n_b dimension
+            t_i = self.get_transition_index(self.n_b)
+            mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
+            mask[:t_i, :] = 1
+            random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
+            mask = torch.gather(mask, 0, random_indices)
         return mask
         
     def branch_forward(self, x, context=0):
@@ -218,7 +238,10 @@ class BranchGatingActFunc(nn.Module):
         return super().eval()
     
     def __repr__(self):
-        return super().__repr__() + f'\nBranchGatingActFunc(n_next_h={self.n_next_h}, \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\n learn_gates={self.learn_gates}, soma_func={self.soma_act_func.__name__}, device={self.device})'
+        return super().__repr__() + f'\nBranchGatingActFunc(n_next_h={self.n_next_h}, \
+    \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\
+    \nlearn_gates={self.learn_gates}, soma_func={self.soma_act_func.__name__}, device={self.device},\
+    \nforward={self.forward.__name__}'
         
         
 
@@ -385,10 +408,12 @@ def test_soma_function_variation():
 
     print("Test passed: All gate function outputs are different.")
     
+
+
 class TestBranchGatingActFunc(unittest.TestCase):
     def test_masks_sparsity(self):
         # Test various combinations of branches and sparsity
-        combinations = [(b,s/10) for b in [1, 10, 20, 30, 100] for s in range(0,11,1)]
+        combinations = [(b, s / 10) for b in [1, 10, 20, 30, 100] for s in range(0, 11, 1)]
         n_next_h = 10  # Set a fixed number of neurons in the next hidden layer for testing
 
         for n_b, sparsity in combinations:
@@ -396,20 +421,25 @@ class TestBranchGatingActFunc(unittest.TestCase):
                 module = BranchGatingActFunc(n_next_h=n_next_h, n_b=n_b, sparsity=sparsity, device='cpu')
                 mask = module.gen_branching_mask()
 
-
                 # Determine the expected number of 1's per column based on sparsity
                 if sparsity == 1.0:
                     expected_ones_per_column = 1
-                elif sparsity == 0.0 or n_b == 1:
-                    expected_ones_per_column = n_b
+                elif sparsity == 0.0:
+                    if n_b == 1:
+                        expected_ones_per_column = n_next_h  # When n_b = 1 and sparsity is 0, all entries should be 1
+                    else:
+                        expected_ones_per_column = n_b  # All entries in each column should be 1 when sparsity is 0 and n_b > 1
                 else:
-                    expected_ones_per_column = round(n_b * (1 - sparsity))
+                    if n_b == 1:
+                        expected_ones_per_column = round(n_next_h * (1 - sparsity))  # Sparsity across the single row
+                    else:
+                        expected_ones_per_column = round(n_b * (1 - sparsity))  # Normal sparsity across columns
 
                 # Check each column individually
                 for col in range(mask.shape[1]):
                     actual_ones = torch.sum(mask[:, col]).item()
-                    self.assertEqual(actual_ones, expected_ones_per_column, f"Column {col} expected {expected_ones_per_column} ones, got {actual_ones}\nMasks:\n{mask}")
-
+                    self.assertEqual(actual_ones, expected_ones_per_column,
+                                     f"Column {col} expected {expected_ones_per_column} ones, got {actual_ones}\nMasks:\n{mask}")
 
     
 if __name__ == "__main__":

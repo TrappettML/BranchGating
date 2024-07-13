@@ -299,7 +299,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
-    for k in ['hidden_laeyrs', 'n_out', 'n_in', 'n_contexts', 'device', 'lr', 'dropout']:
+    for k in ['hidden_laeyrs', 'n_out', 'n_in', 'n_contexts', 'device', 'dropout']:
         if k in MODEL_CONFIGS.keys():
             del MODEL_CONFIGS[k]
     str_dict = dict_to_str(MODEL_CONFIGS | {'model_name': MODEL} | {'repeat': configs["n_repeat"]} |{'epochs_per_task': TRAIN_CONFIGS['epochs_per_task']})
@@ -313,14 +313,14 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
 
 
 if __name__=='__main__':
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 28, 'n_b_2': 14, 'rotation_degrees': [int(i) for i in range(0, 360, angle_increments)], 
-                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'softmax_0.6', 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.6, 'learn_gates': False, 'debug': True, 'lr': 0.01,
-                                      'file_path': './branchNetwork/data/sparseGrad/', 'file_name': 'sparseGrad_data', 'l2': 0.0})
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'rotation_degrees': [0, 180, 90, 270, 45, 135, 225, 315, 60, 150, 240, 330], 
+                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'lse_0.1', 'device': device, 'n_repeat': 0, 
+                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
+                                      'file_path': './branchNetwork/data/longsequence/', 'file_name': 'lse_test', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')
