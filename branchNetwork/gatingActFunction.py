@@ -84,6 +84,11 @@ class BranchGatingActFunc(nn.Module):
                 x = torch.cat((x, ones), dim=1)
                 return torch.logsumexp(x/temp, dim=1)
             return my_lse
+        elif 'relu' in soma_func.lower():
+            def my_relu(x):
+                x = torch.relu(x)
+                return torch.sum(x, dim=1)
+            return my_relu
         else:
             raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum', 'lse'], got {soma_func}")
         

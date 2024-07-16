@@ -44,7 +44,7 @@ def run_tune(args):
     param_config['file_path'] = path
     param_config['model_name'] = args.model_name
     param_config['n_repeat'] = args.repeat_num
-    param_config['rotation_degrees'] = [0, 180, 90, 270, 45, 135, 225, 315, 60, 150, 240, 330]
+    param_config['rotation_degrees'] = [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90]
     param_config['n_b_1'] = args.branch_num
     param_config['epochs_per_task'] = 20
     param_config['n_eval_tasks'] = 3

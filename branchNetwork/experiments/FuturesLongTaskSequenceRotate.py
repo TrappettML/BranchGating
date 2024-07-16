@@ -317,10 +317,10 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'rotation_degrees': [0, 180, 90, 270, 45, 135, 225, 315, 60, 150, 240, 330], 
-                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'lse_0.1', 'device': device, 'n_repeat': 0, 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'relu', 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
-                                      'file_path': './branchNetwork/data/longsequence/', 'file_name': 'lse_test', 'l2': 0.0})
+                                      'file_path': './branchNetwork/data/longsequence/', 'file_name': 'relu_sum_test', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')
