@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=BigSearch
-#SBATCH --output=lse_sparse_repeat_run/%x-%A-%a.out
-#SBATCH --error=lse_sparse_repeat_run/%x-%A-%a.err
+#SBATCH --job-name=DendriteSearch
+#SBATCH --output=NewSparse_AllSearch/%x-%A-%a.out
+#SBATCH --error=NewSparse_AllSearch/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
+#SBATCH --mem=12G
 
 
 #SBATCH --time=14-00:00:00     ### Wall clock time limit in Days-HH:MM:SS
