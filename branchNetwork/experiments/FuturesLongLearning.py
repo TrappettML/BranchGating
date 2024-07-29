@@ -16,30 +16,13 @@ import sys
 import itertools
 import argparse
 
-os.environ['RAY_AIR_NEW_OUTPUT'] = '0'
-
+os.environ['OMP_NUM_THREADS'] = '1'
 
 def run_tune(args):
-    # MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
-    # MODEL_NAMES = ['ExpertModel', 'MasseModel', 'SimpleModel']
-    # MODEL_NAMES = ['MasseModel']
-    # MODEL_NAMES = ['BranchModel']
-    # branches =  [1, 2, 7, 14, 28, 49, 98, 196, 382, 784] # [14] # [49,98,196,392,784] # [1,2,7,14,] 
-    # sparsity = [0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 ,1.0]
-    # layer_2_branches = [2, 10, 500, 1000]
-    # layer_1_branches = [1,2]
-    # layer_2_branches = [1,2]
-    # repeats = 3
-    # repeats_list = [i for i in range(repeats)]
-    # soma_funcs = ['softmax_0.1', 'softmax_1.0', 'softmax_2.0', 
-    #             'softmaxsum_0.1', 'softmaxsum_0.5', 'softmaxsum_1.0', 'softmaxsum_2.0',
-    #             'max', 'sum', 'median']
-
-    
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/SomaFunc_x_branch_zero_sparse_newTaskOrder/'
+        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/SomaFunc_x_Sparse_repeats_all_branches_newTaskOrder/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/SomaFunc_x_branch_zero_sparse_newTaskOrder/'
+        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/SomaFunc_x_Sparse_repeats_all_branches_newTaskOrder/'
     param_config = BASE_CONFIG.copy()
     param_config['file_path'] = path
     param_config['model_name'] = args.model_name
@@ -58,11 +41,11 @@ def run_tune(args):
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a set of experiments with varying parameters")
-    parser.add_argument('--model_name', type=str, required=True, help='Model name')
-    parser.add_argument('--branch_num', type=int, required=True, help='Branch number index')
-    parser.add_argument('--soma_func', type=str, required=True, help='Type of soma function')
-    parser.add_argument('--sparsity', type=float, required=True, help='Sparsity level')
-    parser.add_argument('--repeat_num', type=int, required=True, help='Number of repeats')
+    parser.add_argument('--model_name', type=str, default="BranchModel", help='Model name')
+    parser.add_argument('--branch_num', type=int, default="1", help='Branch number index')
+    parser.add_argument('--soma_func', type=str, default="sum", help='Type of soma function')
+    parser.add_argument('--sparsity', type=float, default="0.0", help='Sparsity level')
+    parser.add_argument('--repeat_num', type=int, default="1", help='Number of repeats')
     # Add other parameters as needed
 
     args = parser.parse_args()

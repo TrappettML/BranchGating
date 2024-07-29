@@ -5,24 +5,25 @@ from branchNetwork.architectures.Expert import ExpertModel
 from branchNetwork.architectures.Masse import MasseModel
 from branchNetwork.architectures.Simple import SimpleModel
 # from branchNetwork.architectures.SparseGradientANN import SparseGradientANN, AdamSI
-from branchNetwork.dataloader import load_permuted_flattened_mnist_data
+# from branchNetwork.dataloader import load_permuted_flattened_mnist_data
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.utils.timing import timing_decorator
 
 from torch.utils.data import DataLoader
 from torch import nn
 from ipdb import set_trace
-from concurrent.futures import ProcessPoolExecutor
-from collections import OrderedDict
+# from concurrent.futures import ProcessPoolExecutor
+# from collections import OrderedDict
 from typing import Callable, Union
 from pickle import dump
 from joblib import Parallel, delayed
 import os
-import socket
+# import socket
 import time
 import re
 
-
+os.environ['OMP_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu', debug=False):
@@ -31,7 +32,7 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu', de
     total_loss = 0
     for i, (images, labels) in enumerate(data_loader):
         if debug:
-            if i > 2:
+            if i > 5:
                 break
         # set_trace()
         images, labels = images.to(device), labels.to(device)
@@ -55,7 +56,7 @@ def evaluate_model(model, task, data_loader, criterion, device, debug):
         for i, (images, labels) in enumerate(data_loader):
             # print(f'evaluating batch {i}')
             if debug:
-                if i>2:
+                if i>5:
                     break
             # set_trace()
             images, labels = images.to(device), labels.to(device)
@@ -74,7 +75,8 @@ def _evaluate_model(model, task, data_loader, criterion, device, debug):
 def evaluate_all_tasks(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device: str='cpu', debug: bool=False):
     tasks = [(model, task, loader, criterion, device, debug) for task, loader in test_loaders.items()]
     # set_trace()
-    results = list(Parallel(n_jobs=3)(delayed(_evaluate_model)(*task) for task in tasks))
+    results = list(Parallel(n_jobs=1, backend='loky')(delayed(_evaluate_model)(*task) for task in tasks))
+    # results = list(map(lambda x: _evaluate_model(*x), tasks))
     return results # list of dictionaries
 
 def calc_remembering(A_acc_1: float, A_acc_2: float) -> float:
@@ -89,7 +91,7 @@ def calc_forward_transfer(B_acc_0: float, B_acc_1: float) -> float:
         This will yield a value between -1 and 1. if the value is negative than negative interference.
         if positive than forward transfer of information.
         General form:
-        FT^{T_i}_{T_{j} = \frac{a^{T_i}_{T_{j-1}} - a^{T_i}_{T_{j}}}{a^{T_i}_{T_j} + a^{T_i}_{T_{j-1}}}"""
+        FT^{T_i}_{T_{j} = \frac{a^{T_i}_{T_{j}} - a^{T_i}_{T_{j-1}}}{a^{T_i}_{T_j} + a^{T_i}_{T_{j-1}}}"""
     return (B_acc_1 - B_acc_0)/ (B_acc_0 + B_acc_1)
 
     
@@ -177,11 +179,12 @@ def train_model(model_name: str,
         all_first_last_data.append(first_last_data)
         print(f'\n\n______________Finished Running on task {task_name}______________\n\n')
     # set_trace()
-    return {'model_name': model_name, 'task_evaluation_acc': all_task_eval_accuracies, 'first_last_data': all_first_last_data}
+    return {'model_name': model_name, 'task_evaluation_acc': all_task_eval_accuracies, 'first_last_data': all_first_last_data, 'model':model}
 
 
 def calc_metrics(d_j, prev_d_j, train_task):
     task_metrics = []
+    # set_trace()
     for metric_dict in d_j:
         for prev_metric_dict in prev_d_j:
             if metric_dict['task_name'] == prev_metric_dict['task_name']:
@@ -192,7 +195,7 @@ def calc_metrics(d_j, prev_d_j, train_task):
         ft = calc_forward_transfer(metric_dict['last_acc'], prev_d_j_metric)
         if eval_task == train_task:
             rem = None
-            rem = None
+            ft = None
         task_metrics.append({'task_name': eval_task, 'remembering': rem, 'forward_transfer': ft})
     return task_metrics
 
@@ -202,11 +205,13 @@ def process_all_sequence_metrics(first_last_data: list[dict[str, float]]) -> lis
     first_train_name = first_last_data[0]['train_task']
     # k is train_task /name
     # v is eval_accuracies
+    # set_trace()
     zero_task_metrics = []
     for eval_task in first_last_data[0]['eval_accuracies']:
         if eval_task['task_name'] != first_train_name:
             rem = None
-            ft = calc_forward_transfer(eval_task['first_acc'], eval_task['last_acc'])
+            # ft = calc_forward_transfer(eval_task['first_acc'], eval_task['last_acc'])
+            ft = calc_forward_transfer(0, eval_task['last_acc'])
         else:
             rem = None
             ft = None
@@ -251,6 +256,7 @@ def pickle_data(data_to_be_saved, file_path, file_name):
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     n_b_1 = configs.get('n_b_1', 14) #  if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
+    # set_trace()
     # rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
     rotation_degrees = configs.get('rotation_degrees', [0]) # ] if 'rotation_degrees' in configs.keys() else [0]
     epochs_per_task = configs['epochs_per_task']
@@ -271,7 +277,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
                     'soma_func': configs.get('soma_func', 'sum'), 
                     'l2': configs.get('l2', 0.0),
-                    'lr': configs.get('lr', 0.001),
+                    'lr': configs.get('lr', 0.0001),
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
                     'dropout': 0.5,
@@ -296,6 +302,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
 
     all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
     sequence_metrics = process_all_sequence_metrics(all_task_accuracies['first_last_data'])
+    m = all_task_accuracies.pop('model')
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
@@ -307,6 +314,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
         str_dict = str_dict[:255]
     pickle_data(sequence_metrics, TRAIN_CONFIGS['file_path'], f'si_sequential_eval_task_metrics{str_dict}')
     pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'si_all_task_accuracies{str_dict}')
+    torch.save(m.state_dict(), f'{TRAIN_CONFIGS["file_path"]}/state_dict_{str_dict}')
     pickle_data(f"{TRAIN_CONFIGS=}, {MODEL_CONFIGS=}", TRAIN_CONFIGS['file_path'], f'configs{str_dict}')
     print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS["sparsity"]}, n_b_1 {n_b_1}, learn_gates {MODEL_CONFIGS["learn_gates"]}')
 
@@ -318,9 +326,9 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'relu', 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
-                                      'file_path': './branchNetwork/data/longsequence/', 'file_name': 'relu_sum_test', 'l2': 0.0})
+                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
+                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
+                                      'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')

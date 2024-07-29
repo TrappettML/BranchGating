@@ -98,34 +98,34 @@ class BranchGatingActFunc(nn.Module):
             self.masks[str(i)] = self.gen_branching_mask()
             self.learnable_parameters['unsigned' + str(i)] = self.make_learnable_gates(self.masks[str(i)])
         
-    # def make_mask(self):
-    #     if self.n_b == 1: # will be Masse style Model
-    #         mask = self.generate_interpolated_array(self.n_next_h)
-    #         return mask.float()
-    #     else:
-    #         return self.gen_branching_mask()
-        
-    def _gen_branching_mask(self):
-        return torch.stack([self.generate_interpolated_array(self.n_b) for _ in range(self.n_next_h)]).float().T
-    
     def gen_branching_mask(self):
-        # Check if n_b is 1 to switch sparsity along n_next_h dimension
         if self.n_b == 1:
-            # Generate a mask with sparsity along the n_next_h dimension
-            t_i = self.get_transition_index(self.n_next_h)
-            mask = torch.zeros(self.n_next_h, dtype=torch.float32, device=self.device)
-            mask[:t_i] = 1
-            random_indices = torch.argsort(torch.rand(self.n_next_h, device=self.device))
-            mask = mask[random_indices]
-            mask = mask.unsqueeze(0)  # Add a singleton dimension for compatibility
+            empty_mask = torch.ones(self.n_next_h, dtype=torch.float32, device=self.device)*(1-self.sparsity)
+            mask = torch.bernoulli(empty_mask)
+            mask = mask.unsqueeze(0)
         else:
-            # Generate a mask with sparsity along the n_b dimension
-            t_i = self.get_transition_index(self.n_b)
-            mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
-            mask[:t_i, :] = 1
-            random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
-            mask = torch.gather(mask, 0, random_indices)
+            empty_mask = torch.ones(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)*(1-self.sparsity)
+            mask = torch.bernoulli(empty_mask)
         return mask
+            
+    # def gen_branching_mask(self):
+    #     # Check if n_b is 1 to switch sparsity along n_next_h dimension
+    #     if self.n_b == 1:
+    #         # Generate a mask with sparsity along the n_next_h dimension
+    #         t_i = self.get_transition_index(self.n_next_h)
+    #         mask = torch.zeros(self.n_next_h, dtype=torch.float32, device=self.device)
+    #         mask[:t_i] = 1
+    #         random_indices = torch.argsort(torch.rand(self.n_next_h, device=self.device))
+    #         mask = mask[random_indices]
+    #         mask = mask.unsqueeze(0)  # Add a singleton dimension for compatibility
+    #     else:
+    #         # Generate a mask with sparsity along the n_b dimension
+    #         t_i = self.get_transition_index(self.n_b)
+    #         mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
+    #         mask[:t_i, :] = 1
+    #         random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
+    #         mask = torch.gather(mask, 0, random_indices)
+    #     return mask
         
     def branch_forward(self, x, context=0):
         x = x.to(self.device)
@@ -244,9 +244,9 @@ class BranchGatingActFunc(nn.Module):
     
     def __repr__(self):
         return super().__repr__() + f'\nBranchGatingActFunc(n_next_h={self.n_next_h}, \
-    \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\
-    \nlearn_gates={self.learn_gates}, soma_func={self.soma_act_func.__name__}, device={self.device},\
-    \nforward={self.forward.__name__}'
+                                        \nn_b={self.n_b}, n_contexts={self.n_contexts}, sparsity={self.sparsity},\
+                                        \nlearn_gates={self.learn_gates}, soma_func={self.soma_act_func.__name__}, device={self.device},\
+                                        \nforward={self.forward.__name__}'
         
         
 
