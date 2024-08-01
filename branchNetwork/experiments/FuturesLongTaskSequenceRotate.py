@@ -138,6 +138,9 @@ def single_task(model:nn.Module,
         thread.join()
         test_results = data_holder.get()
         task_accuracies = gather_task_accuracies(task_accuracies, test_results)
+    evaluate_all_tasks(model, test_loaders, criterion, device=device, debug=debug, data_struct=data_holder)
+    task_results = data_holder.get()
+    task_accuracies = gather_task_accuracies(task_accuracies, task_results)
     eval_first_last_accuracies = get_first_last_accuracies(task_accuracies)
     single_task_data = {'train_task': train_task, 'eval_accuracies': eval_first_last_accuracies}
     ft = calc_forward_transfer(eval_first_last_accuracies[0]['first_acc'], eval_first_last_accuracies[0]['last_acc'])
