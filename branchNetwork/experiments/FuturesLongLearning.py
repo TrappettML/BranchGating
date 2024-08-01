@@ -20,9 +20,9 @@ os.environ['OMP_NUM_THREADS'] = '2'
 
 def run_tune(args):
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/SomaFunc_x_Sparse_repeats_all_branches_newTaskOrder/'
+        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/deterministic_gates/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/SomaFunc_x_Sparse_repeats_all_branches_newTaskOrder/'
+        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/deterministic_gates/'
     param_config = BASE_CONFIG.copy()
     param_config['file_path'] = path
     param_config['model_name'] = args.model_name
