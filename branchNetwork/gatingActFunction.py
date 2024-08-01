@@ -28,7 +28,6 @@ class BranchGatingActFunc(nn.Module):
         self.n_contexts = n_contexts
         self.n_b = n_b
         self.masks = {}
-        self.forward = self.branch_forward if n_b > 1 else self.masse_forward
         self.get_context = self.get_learning_context if learn_gates else self.get_unlearning_context
         self.seen_contexts = list()
         self.learn_gates = learn_gates
@@ -121,30 +120,19 @@ class BranchGatingActFunc(nn.Module):
             latent = (latent - min_z) / (max_z - min_z)
             mask = torch.heaviside(latent - self.sparsity, values=torch.tensor(0.0))
             return mask
-            
-               
-    def branch_forward(self, x, context=0):
+                
+    def forward(self, x, context=0):
         x = x.to(self.device)
         '''forward function for when n_b > 1
            sum over the n_b dimension'''
         # set_trace()
         context = str(context)
         gate = self.get_context(context)
-        # return torch.sum(x * gate, dim=1) # x is shape (n_batches, n_b, n_next_h), and so we are summing over branches. 
-        return self.soma_act_func(x * gate)
-    
-    def masse_forward(self, x, context=0):
-        x = x.to(self.device)
-        '''forward function for when n_b = 1,
-           no sum needed'''
-        context = str(context)
-        gate = self.get_context(context)
-        out = x * gate
-        if len(out.shape) == 3:
-            assert out.shape[1] == 1, "Expected n_b to be 1"
-            out = out.squeeze(1)
+        # when n_b =1 and soma_act_func = sum, equal to masse model.
+        out = self.soma_act_func(x * gate)
+        print(f'out shape: {out.shape}')
         return out
-
+            
     def get_unlearning_context(self, context):
         '''check if context is in seen contexts, and return the index'''
         if context not in self.masks:

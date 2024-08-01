@@ -63,6 +63,7 @@ def evaluate_model(model, task, data_loader, criterion, device, debug):
             # set_trace()
             images, labels = images.to(device), labels.to(device)
             outputs = model(images, task)
+            assert outputs.shape[0] == labels.shape[0], f'{outputs.shape[0]} != {labels.shape[0]}'
             loss = criterion(outputs, labels)
             _, predicted = torch.max(outputs, 1)
             total += labels.size(0)
@@ -272,7 +273,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # rotations = configs['rotations'] if 'rotations' in configs.keys() else [0, 180]
     rotation_degrees = configs.get('rotation_degrees', [0]) # ] if 'rotation_degrees' in configs.keys() else [0]
     epochs_per_task = configs['epochs_per_task']
-    batch_size = configs['batch_size']
+    batch_size = configs.get('batch_size', 32)
     MODEL = configs['model_name']
     MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel ]
     MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
@@ -329,7 +330,7 @@ if __name__=='__main__':
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 2, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': True, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
+                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
                                       'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
