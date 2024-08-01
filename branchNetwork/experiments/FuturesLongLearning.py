@@ -19,10 +19,11 @@ import argparse
 os.environ['OMP_NUM_THREADS'] = '2'
 
 def run_tune(args):
+    sub_folder = 'deterministic_gates_debug'
     if 'talapas' in socket.gethostname():
-        path = '/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/deterministic_gates/'
+        path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
-        path = '/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/deterministic_gates/'
+        path = f'/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/{sub_folder}/'
     param_config = BASE_CONFIG.copy()
     param_config['file_path'] = path
     param_config['model_name'] = args.model_name
