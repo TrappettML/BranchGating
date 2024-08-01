@@ -130,7 +130,7 @@ class BranchGatingActFunc(nn.Module):
         gate = self.get_context(context)
         # when n_b =1 and soma_act_func = sum, equal to masse model.
         out = self.soma_act_func(x * gate)
-        print(f'out shape: {out.shape}')
+        # print(f'out shape: {out.shape}')
         return out
             
     def get_unlearning_context(self, context):

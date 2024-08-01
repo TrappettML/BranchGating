@@ -24,8 +24,8 @@ import time
 import re
 import queue
 
-os.environ['OMP_NUM_THREADS'] = '2'
-torch.set_num_threads(2)
+os.environ['OMP_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu', debug=False):
