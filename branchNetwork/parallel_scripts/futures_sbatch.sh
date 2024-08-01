@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=DendriteSearch
-#SBATCH --output=NewSparse_AllSearch/%x-%A-%a.out
-#SBATCH --error=NewSparse_AllSearch/%x-%A-%a.err
+#SBATCH --job-name=DetGates
+#SBATCH --output=det_gates/%x-%A-%a.out
+#SBATCH --error=det_gates/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4

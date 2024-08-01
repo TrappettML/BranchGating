@@ -17,10 +17,10 @@ class BranchModel(nn.Module):
             super(BranchModel, self).__init__()
             learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
             soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
-            temp = model_configs['temp'] if 'temp' in model_configs else 1
             # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
             layer_2_n_in = 784 if 'hidden_sizes' not in model_configs else model_configs['hidden_sizes'][0]
             layer_3_n_in = 784 if 'hidden_sizes' not in model_configs else model_configs['hidden_sizes'][1]
+            drop_ratio = model_configs.get('dropout', 0)
             
             self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
                                       n_npb=model_configs['n_npb'][0],
@@ -34,7 +34,8 @@ class BranchModel(nn.Module):
                                                 model_configs['sparsity'],
                                                 learn_gates,
                                                 soma_func=soma_func,
-                                                device=model_configs['device'],)
+                                                device=model_configs['device'],
+                                                det_masks=model_configs.get('det_masks', False),)
             self.layer_2 = BranchLayer(layer_2_n_in,
                                       model_configs['n_npb'][1],
                                        model_configs['n_branches'][1],
@@ -47,7 +48,7 @@ class BranchModel(nn.Module):
                                                 learn_gates,
                                                 soma_func=soma_func,
                                                 device=model_configs['device'],
-                                                )
+                                                det_masks=model_configs.get('det_masks', False),)
             
             self.layer_3 = nn.Linear(layer_3_n_in, model_configs['n_out'], device=model_configs['device'])
             self.drop_out = nn.Dropout(model_configs['dropout'])
@@ -55,9 +56,15 @@ class BranchModel(nn.Module):
                      
         def forward(self, x, context=0):
             # set_trace()
-            x = self.drop_out(self.act_func(self.gating_1(self.layer_1(x), context)))
-            x = self.drop_out(self.act_func(self.gating_2(self.layer_2(x), context)))
+            self.branch_activities_1 = self.layer_1(x)
+            x = self.drop_out(self.act_func(self.gating_1(self.branch_activities_1, context)))
+            self.x_hidden = x
+            self.branch_activities_2 = self.layer_1(x)
+            x = self.drop_out(self.act_func(self.gating_2(self.branch_activities_2, context)))
             return self.layer_3(x)
+        
+        def heb_branch_update(self, eta=0.1):
+            pass
         
         
 def test_Branch(soma_func='sum'):

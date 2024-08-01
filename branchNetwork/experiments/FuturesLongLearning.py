@@ -16,7 +16,7 @@ import sys
 import itertools
 import argparse
 
-os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '2'
 
 def run_tune(args):
     if 'talapas' in socket.gethostname():
@@ -33,7 +33,6 @@ def run_tune(args):
     param_config['n_eval_tasks'] = 3
     param_config['learn_gates'] = False
     param_config['sparsity'] = args.sparsity
-
     param_config['soma_func'] = args.soma_func
     
     run_continual_learning(param_config)

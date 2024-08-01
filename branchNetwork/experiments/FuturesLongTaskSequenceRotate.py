@@ -17,13 +17,15 @@ from ipdb import set_trace
 from typing import Callable, Union
 from pickle import dump
 from joblib import Parallel, delayed
+import threading
 import os
 # import socket
 import time
 import re
+import queue
 
-os.environ['OMP_NUM_THREADS'] = '1'
-torch.set_num_threads(1)
+os.environ['OMP_NUM_THREADS'] = '2'
+torch.set_num_threads(2)
 
 # Function to train the model for one epoch
 def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu', debug=False):
@@ -72,12 +74,14 @@ def evaluate_model(model, task, data_loader, criterion, device, debug):
 def _evaluate_model(model, task, data_loader, criterion, device, debug):
     return {task: evaluate_model(model, task, data_loader, criterion, device=device, debug=debug)}
 
-def evaluate_all_tasks(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device: str='cpu', debug: bool=False):
+def evaluate_all_tasks(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device: str='cpu', debug: bool=False, data_struct: queue.Queue=None):
     tasks = [(model, task, loader, criterion, device, debug) for task, loader in test_loaders.items()]
     # set_trace()
     results = list(Parallel(n_jobs=1, backend='loky')(delayed(_evaluate_model)(*task) for task in tasks))
     # results = list(map(lambda x: _evaluate_model(*x), tasks))
-    return results # list of dictionaries
+    data_struct.put(results)
+    # return results # list of dictionaries
+    return
 
 def calc_remembering(A_acc_1: float, A_acc_2: float) -> float:
     """Rem = Acc_2 / Acc_1 -> this will yield a value between 0 and 1 (most likely)
@@ -125,9 +129,14 @@ def single_task(model:nn.Module,
     # model.train()
     task_accuracies = {}
     print(f'begining training model {model} on task {train_task}')
-    for epoch in range(epochs):
-        train_loss = train_epoch(model, train_loader, train_task, optimizer, criterion, device=device, debug=debug)
-        test_results = evaluate_all_tasks(model, test_loaders, criterion, device=device, debug=debug)
+    data_holder = queue.Queue()
+    train_epoch(model, train_loader, train_task, optimizer, criterion, device=device, debug=debug)
+    for epoch in range(epochs-1):
+        thread = threading.Thread(target=evaluate_all_tasks, args=(model, test_loaders, criterion, device, debug, data_holder))
+        thread.start()
+        train_epoch(model, train_loader, train_task, optimizer, criterion, device=device, debug=debug)
+        thread.join()
+        test_results = data_holder.get()
         task_accuracies = gather_task_accuracies(task_accuracies, test_results)
     eval_first_last_accuracies = get_first_last_accuracies(task_accuracies)
     single_task_data = {'train_task': train_task, 'eval_accuracies': eval_first_last_accuracies}
@@ -280,25 +289,15 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'lr': configs.get('lr', 0.0001),
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
-                    'dropout': 0.5,
+                    'dropout': configs.get('dropout', 0.0),
                     'n_npb': [get_n_npb(n_b_1, 784), get_n_npb(n_b_2, 784)], 
                     'n_branches': [n_b_1, n_b_2], 
                     'sparsity': configs.get('sparsity', 0.0), 
                     'hidden_layers': [784, 784],
                     'n_in': 784, 
-                    'n_out': 10,                     
+                    'n_out': 10,
+                    'det_masks': configs.get('det_masks', True),                  
                     }
-
-    # if not ray.is_initialized():
-    #     if configs['device'] == 'cuda':
-    #         gpus = torch.cuda.device_count()
-    #         ray.init(num_cpus=5, num_gpus=gpus)
-    #     if configs['debug'] == True:
-    #         ray.init(num_cpus=1, num_gpus=0)
-    #     else:
-    #         ray.init(num_cpus=5)
-            
-    # results = ray.get([train_model.remote(model_name, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS) for model_name in MODEL_NAMES])
 
     all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
     sequence_metrics = process_all_sequence_metrics(all_task_accuracies['first_last_data'])
@@ -325,8 +324,8 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 14, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+                                      'epochs_per_task': 4, 'det_masks': True, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
                                       'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
     time_end = time.time()

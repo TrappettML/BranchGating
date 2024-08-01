@@ -7,7 +7,7 @@ import re
 import unittest
 
 class BranchGatingActFunc(nn.Module):
-    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, soma_func='sum', device='cpu'):
+    def __init__(self, n_next_h, n_b=1, n_contexts=1, sparsity=0, learn_gates=False, soma_func='sum', device='cpu', det_masks=False):
         '''
         args:
         - n_b (int): The number of branches.
@@ -35,10 +35,14 @@ class BranchGatingActFunc(nn.Module):
         self.current_context = None
         self.soma_act_func = self.set_soma_func(soma_func)
         self.device = device
+        self.deterministic_masks = det_masks
+        self.mask_weight = self.make_mask_weights()
         if learn_gates:
+            # raise ValueError("learn_gates off for now")
             self.make_learnable_parameters()
             self.all_grads_false = False
             self.activate_current_context = False
+            
     
     def set_soma_func(self, soma_func):
         if soma_func == 'sum':
@@ -98,35 +102,27 @@ class BranchGatingActFunc(nn.Module):
             self.masks[str(i)] = self.gen_branching_mask()
             self.learnable_parameters['unsigned' + str(i)] = self.make_learnable_gates(self.masks[str(i)])
         
-    def gen_branching_mask(self):
-        if self.n_b == 1:
-            empty_mask = torch.ones(self.n_next_h, dtype=torch.float32, device=self.device)*(1-self.sparsity)
-            mask = torch.bernoulli(empty_mask)
-            mask = mask.unsqueeze(0)
-        else:
-            empty_mask = torch.ones(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)*(1-self.sparsity)
-            mask = torch.bernoulli(empty_mask)
-        return mask
+    def gen_branching_mask(self, context=0):
+        if not self.deterministic_masks:
+            if self.n_b == 1:
+                empty_mask = torch.ones(self.n_next_h, dtype=torch.float32, device=self.device)*(1-self.sparsity)
+                mask = torch.bernoulli(empty_mask)
+                mask = mask.unsqueeze(0)
+            else:
+                empty_mask = torch.ones(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)*(1-self.sparsity)
+                mask = torch.bernoulli(empty_mask)
+            return mask
+        elif self.deterministic_masks:
+            mask_z = self.make_z(int(context))
+            latent = torch.matmul(self.mask_weight, mask_z)
+            latent = latent.reshape(self.n_b, self.n_next_h)
+            max_z = torch.max(latent)
+            min_z = torch.min(latent)
+            latent = (latent - min_z) / (max_z - min_z)
+            mask = torch.heaviside(latent - self.sparsity, values=torch.tensor(0.0))
+            return mask
             
-    # def gen_branching_mask(self):
-    #     # Check if n_b is 1 to switch sparsity along n_next_h dimension
-    #     if self.n_b == 1:
-    #         # Generate a mask with sparsity along the n_next_h dimension
-    #         t_i = self.get_transition_index(self.n_next_h)
-    #         mask = torch.zeros(self.n_next_h, dtype=torch.float32, device=self.device)
-    #         mask[:t_i] = 1
-    #         random_indices = torch.argsort(torch.rand(self.n_next_h, device=self.device))
-    #         mask = mask[random_indices]
-    #         mask = mask.unsqueeze(0)  # Add a singleton dimension for compatibility
-    #     else:
-    #         # Generate a mask with sparsity along the n_b dimension
-    #         t_i = self.get_transition_index(self.n_b)
-    #         mask = torch.zeros(self.n_b, self.n_next_h, dtype=torch.float32, device=self.device)
-    #         mask[:t_i, :] = 1
-    #         random_indices = torch.argsort(torch.rand(self.n_b, self.n_next_h, device=self.device), dim=0)
-    #         mask = torch.gather(mask, 0, random_indices)
-    #     return mask
-        
+               
     def branch_forward(self, x, context=0):
         x = x.to(self.device)
         '''forward function for when n_b > 1
@@ -152,7 +148,7 @@ class BranchGatingActFunc(nn.Module):
     def get_unlearning_context(self, context):
         '''check if context is in seen contexts, and return the index'''
         if context not in self.masks:
-            self.masks[context] = self.gen_branching_mask()
+            self.masks[context] = self.gen_branching_mask(context)
             assert len(self.masks) <= self.n_contexts, "Contexts are more than the specified number" 
         return self.masks[context]
     
@@ -248,7 +244,18 @@ class BranchGatingActFunc(nn.Module):
                                         \nlearn_gates={self.learn_gates}, soma_func={self.soma_act_func.__name__}, device={self.device},\
                                         \nforward={self.forward.__name__}'
         
-        
+    def make_z(self, theta):
+        theta = torch.tensor(theta) * torch.pi/180
+        return torch.tensor([[torch.cos(theta)], [torch.sin(theta)]])
+    
+    def make_mask_weights(self):
+        if self.n_b > 1:
+            mask_weight = torch.nn.init.xavier_uniform_(torch.empty((self.n_b * self.n_next_h, 2), device=self.device), gain=0.5)
+        else:
+            mask_weight = torch.nn.init.xavier_uniform_(torch.empty((self.n_next_h, 2), device=self.device), gain=0.5)
+        return mask_weight
+
+
 
 
 def test_gating_act_func(branch=1):
@@ -413,8 +420,6 @@ def test_soma_function_variation():
 
     print("Test passed: All gate function outputs are different.")
     
-
-
 class TestBranchGatingActFunc(unittest.TestCase):
     def test_masks_sparsity(self):
         # Test various combinations of branches and sparsity
@@ -446,17 +451,82 @@ class TestBranchGatingActFunc(unittest.TestCase):
                     self.assertEqual(actual_ones, expected_ones_per_column,
                                      f"Column {col} expected {expected_ones_per_column} ones, got {actual_ones}\nMasks:\n{mask}")
 
+
+def test_context_masks():
+    import torch.nn.functional as F
+    from torch.nn import CosineSimilarity
+    import matplotlib.pyplot as plt
+   # Initialize parameters
+    n_next_h = 100  # number of neurons in the next layer
+    n_b = 10  # number of branches
+    n_contexts = 5  # number of contexts to test
+    device = 'cpu'
     
+    # Define sparsity values and contexts
+    sparsity_values = [0.1, 0.3, 0.5, 0.7, 0.9]
+    contexts = [0, 45, 90, 135, 180, 225, 270, 315, 340]
+    
+    # Prepare the plot
+    fig, axs = plt.subplots(1, len(contexts), figsize=(15, 3))  # Adjust subplot size as needed
+
+    # Iterate over each context for visual inspection
+    for j, degree in enumerate(contexts):
+        model = BranchGatingActFunc(n_next_h=n_next_h, n_b=n_b, n_contexts=n_contexts, sparsity=0.5, learn_gates=False, soma_func='sum', device=device, det_masks=True)
+        context_mask = model.gen_branching_mask(degree)
+        axs[j].imshow(context_mask.flatten().view(n_next_h, -1).numpy(), cmap='hot')
+        axs[j].set_title(f'Context {degree}°')
+        axs[j].axis('off')  # Turn off axis numbering
+
+    # Cosine similarity calculation setup
+    cos_sim = CosineSimilarity(dim=0)
+    similarities = {sparsity: {} for sparsity in sparsity_values}
+
+    # Iterate over each sparsity value to compute similarities
+    for sparsity in sparsity_values:
+        masks = {}
+        model = BranchGatingActFunc(n_next_h=n_next_h, n_b=n_b, n_contexts=n_contexts, sparsity=sparsity, learn_gates=False, soma_func='sum', device=device, det_masks=True)
+        for degree in contexts:
+            context_mask = model.gen_branching_mask(degree)
+            masks[degree] = context_mask.flatten()  # Flatten the mask for easier comparison
+        
+        # Calculate cosine similarities for this sparsity
+        for i in range(len(contexts)):
+            for j in range(i + 1, len(contexts)):
+                cos_score = cos_sim(masks[contexts[i]], masks[contexts[j]]).item()
+                if (contexts[i], contexts[j]) not in similarities[sparsity]:
+                    similarities[sparsity][(contexts[i], contexts[j])] = cos_score
+
+    # Print cosine similarities in a table format
+    print("Cosine Similarity Scores:")
+    header = "Context Pair"
+    column_width = 12  # Define the width of each column
+    header += ' | ' + ' | '.join(f"{f'Sparsity {s:.1f}':>{column_width}}" for s in sparsity_values)
+    print(header)
+    print("-" * len(header))
+
+    for i in range(len(contexts)):
+        for j in range(i + 1, len(contexts)):
+            scores = " | ".join(f"{similarities[s][(contexts[i], contexts[j])]:>{column_width}.4f}" for s in sparsity_values)
+            context_pair = f"{contexts[i]}° - {contexts[j]}°".ljust(20)
+            print(f"{context_pair} | {scores}")
+
+    # Adjust layout and save the plot
+    plt.tight_layout()
+    plt.savefig('context_masks_comparison.png')
+    plt.savefig('./context_masks_comparison.png')
+    
+
 if __name__ == "__main__":
-    for b in [1,10, 20, 30 , 100]:
-        test_gating_act_func()
-    test_masse_act_func()
-    test_learnable_gates()
-    test_branch_gating_act_func()
-    test_gradient_backprop_multi_context()
-    for soma_func in ['sum', 'max', 'softmax_2.0', 'softmaxsum_2.0']:
-        test_gradient_backprop_multi_context(soma_func)
-        print(f'Gradient backprop test passed for {soma_func} gate function')
-    test_soma_function_variation()
-    unittest.main()
+    # for b in [1,10, 20, 30 , 100]:
+    #     test_gating_act_func()
+    # test_masse_act_func()
+    # test_learnable_gates()
+    # test_branch_gating_act_func()
+    # test_gradient_backprop_multi_context()
+    # for soma_func in ['sum', 'max', 'softmax_2.0', 'softmaxsum_2.0']:
+    #     test_gradient_backprop_multi_context(soma_func)
+    #     print(f'Gradient backprop test passed for {soma_func} gate function')
+    # test_soma_function_variation()
+    # unittest.main()
+    test_context_masks()
     
