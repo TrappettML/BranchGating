@@ -517,16 +517,16 @@ def test_context_masks():
     
 
 if __name__ == "__main__":
-    # for b in [1,10, 20, 30 , 100]:
-    #     test_gating_act_func()
-    # test_masse_act_func()
-    # test_learnable_gates()
-    # test_branch_gating_act_func()
-    # test_gradient_backprop_multi_context()
-    # for soma_func in ['sum', 'max', 'softmax_2.0', 'softmaxsum_2.0']:
-    #     test_gradient_backprop_multi_context(soma_func)
-    #     print(f'Gradient backprop test passed for {soma_func} gate function')
-    # test_soma_function_variation()
-    # unittest.main()
+    for b in [1,10, 20, 30 , 100]:
+        test_gating_act_func()
+    test_masse_act_func()
+    test_learnable_gates()
+    test_branch_gating_act_func()
+    test_gradient_backprop_multi_context()
+    for soma_func in ['sum', 'max', 'softmax_2.0', 'softmaxsum_2.0']:
+        test_gradient_backprop_multi_context(soma_func)
+        print(f'Gradient backprop test passed for {soma_func} gate function')
+    test_soma_function_variation()
+    unittest.main()
     test_context_masks()
     

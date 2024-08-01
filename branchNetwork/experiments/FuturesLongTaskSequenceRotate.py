@@ -77,7 +77,7 @@ def _evaluate_model(model, task, data_loader, criterion, device, debug):
 def evaluate_all_tasks(model: nn.Module, test_loaders: dict[int, DataLoader], criterion: Callable, device: str='cpu', debug: bool=False, data_struct: queue.Queue=None):
     tasks = [(model, task, loader, criterion, device, debug) for task, loader in test_loaders.items()]
     # set_trace()
-    results = list(Parallel(n_jobs=1, backend='loky')(delayed(_evaluate_model)(*task) for task in tasks))
+    results = list(Parallel(n_jobs=3, backend='loky')(delayed(_evaluate_model)(*task) for task in tasks))
     # results = list(map(lambda x: _evaluate_model(*x), tasks))
     data_struct.put(results)
     # return results # list of dictionaries
@@ -327,7 +327,7 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 2, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': True, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
                                       'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
