@@ -15,7 +15,7 @@ class BranchModel(nn.Module):
         layer 1 is 784x2000, layer2 is 2000x2000, layer3 is 2000x10'''
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(BranchModel, self).__init__()
-            set_trace()
+            # set_trace()
             learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
             soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
             # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
