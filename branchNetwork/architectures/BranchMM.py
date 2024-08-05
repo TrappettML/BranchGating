@@ -51,7 +51,7 @@ class BranchModel(nn.Module):
                                                 det_masks=model_configs.get('det_masks', False),)
             
             self.layer_3 = nn.Linear(layer_3_n_in, model_configs['n_out'], device=model_configs['device'])
-            self.drop_out = nn.Dropout(model_configs['dropout'])
+            self.drop_out = nn.Dropout(drop_ratio)
             self.act_func = nn.ReLU()  
                      
         def forward(self, x, context=0):
@@ -239,7 +239,47 @@ def test_branch_model_on_varied_configurations(soma_func='sum'):
                 assert y.shape == (32, 10), "Output shape is incorrect"
                 print(f"\tTest passed. Output shape: {y.shape}")
                 print(f"\tOutput sum for this configuration: {y.sum().item()}")
-                
+ 
+def test_det_branch_model():  
+    import pprint            
+    def _test_branch_model(sparsity_values, context_values, input_tensor):
+        model_configs = {
+            'n_in': 784,
+            'n_out': 10,
+            'n_npb': [int(784/7), int(784/7)],
+            'n_branches': [7, 7],
+            'hidden_sizes': [784, 784],
+            'device': 'cpu',
+            'dropout': 0.5,
+            'learn_gates': False,
+            'soma_func': 'sum',
+            'det_masks': True,
+            'n_contexts': 12,
+        }
+
+        outputs = {}
+        for sparsity in sparsity_values:
+            model_configs['sparsity'] = sparsity
+            model = BranchModel(model_configs)
+            for context in context_values:
+                set_trace()
+                output = model(input_tensor, context)
+                outputs[(sparsity, context)] = np.mean(output.detach().numpy())
+
+        return outputs
+
+    # Define sparsity and context ranges
+    sparsity_values = np.arange(0, 1, 0.1)
+    context_values = np.arange(0, 360, 30)
+
+    # Create a random input tensor
+    input_tensor = torch.randn(1, 784)  # Example size for a single input
+
+    # Test the model
+    outputs = _test_branch_model(sparsity_values, context_values, input_tensor)
+    print("Outputs for different sparsity and context values:")
+    pprint.pprint(outputs)
+
 if __name__ == '__main__':
     test_Branch()
     print('BranchModel test passed.')
@@ -250,6 +290,5 @@ if __name__ == '__main__':
             test_Branch(soma_func)
             print(f'BranchModel test passed for soma_func: {soma_func} and temp: {temp}')
     test_branch_model_on_varied_configurations()
-    
-            
-    unittest.main()
+    # unittest.main()
+    test_det_branch_model()
