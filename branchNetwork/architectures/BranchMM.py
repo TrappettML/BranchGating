@@ -15,11 +15,12 @@ class BranchModel(nn.Module):
         layer 1 is 784x2000, layer2 is 2000x2000, layer3 is 2000x10'''
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(BranchModel, self).__init__()
+            set_trace()
             learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
             soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
             # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
-            layer_2_n_in = 784 if 'hidden_sizes' not in model_configs else model_configs['hidden_sizes'][0]
-            layer_3_n_in = 784 if 'hidden_sizes' not in model_configs else model_configs['hidden_sizes'][1]
+            layer_2_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][0]
+            layer_3_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][1]
             drop_ratio = model_configs.get('dropout', 0)
             
             self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
@@ -59,7 +60,7 @@ class BranchModel(nn.Module):
             self.branch_activities_1 = self.layer_1(x)
             x = self.drop_out(self.act_func(self.gating_1(self.branch_activities_1, context)))
             self.x_hidden = x
-            self.branch_activities_2 = self.layer_1(x)
+            self.branch_activities_2 = self.layer_2(x)
             x = self.drop_out(self.act_func(self.gating_2(self.branch_activities_2, context)))
             return self.layer_3(x)
         
