@@ -12,3 +12,16 @@ Clone this repository to your local machine and install the required packages:
 git clone <repository-url>
 cd <repository-name>
 pip install -r requirements.txt
+pip install -e . 
+
+
+## Running
+The main file for running a single instance of Rotated MNIST is 
+branchNetwork/experiments/FuturesLongTaskSequenceRotate.py (I need to update naming). 
+The parameters to change are located in the bottom of that file.
+
+The Branching network is branchNetwork/architecture/BranchMM (Branch Matrix Multi) and 
+the sub files are branchNetwork/gatingActFunction.py and branchNetwork/BranchLayerMM.py in the main folder. 
+
+Most files should have a test that can be run to make sure each piece is working. 
+

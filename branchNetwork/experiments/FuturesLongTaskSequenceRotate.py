@@ -330,7 +330,7 @@ if __name__=='__main__':
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 2, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': True, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001,
+                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden_layers': [200, 200],
                                       'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
