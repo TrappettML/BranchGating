@@ -15,11 +15,12 @@ import os
 import sys
 import itertools
 import argparse
+from datetime import datetime
 
 os.environ['OMP_NUM_THREADS'] = '1'
 
 def run_tune(args):
-    sub_folder = 'deterministic_gates_retry'
+    sub_folder = f'deterministic_gates_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
