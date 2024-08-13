@@ -18,7 +18,7 @@ for model in "${model_names[@]}"; do
                 for soma_func in "${soma_funcs[@]}"; do
                     for hidden in "${hiddens[@]}"; do
                         for n_npb in "${n_npbs[@]}"; do
-                            echo "--model_name $model --branch_num $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --hidden [$hidden,$hidden] --n_npb $n_npb"
+                            echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --hidden [$hidden,$hidden] --n_npb $n_npb"
                         done
                     done
                 done
