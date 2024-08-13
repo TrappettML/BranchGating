@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=DetGates
+#SBATCH --job-name=SmallNet
 #SBATCH --output=small_network/%x-%A-%a.out
 #SBATCH --error=small_network/%x-%A-%a.err
 
