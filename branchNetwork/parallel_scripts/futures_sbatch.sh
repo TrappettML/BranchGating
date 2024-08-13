@@ -2,8 +2,8 @@
 
 #SBATCH --partition=computelong,computelong_intel
 #SBATCH --job-name=DetGates
-#SBATCH --output=det2_gates/%x-%A-%a.out
-#SBATCH --error=det2_gates/%x-%A-%a.err
+#SBATCH --output=small_network/%x-%A-%a.out
+#SBATCH --error=small_network/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4

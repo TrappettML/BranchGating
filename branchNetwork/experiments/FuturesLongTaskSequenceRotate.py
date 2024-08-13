@@ -241,7 +241,11 @@ def process_all_sequence_metrics(first_last_data: list[dict[str, float]]) -> lis
 
 
 def get_n_npb(n_branches, n_in):
-    return int(n_in/n_branches)
+    n_npb = int(n_in/n_branches)
+    # if n_npb < 1:
+    #     n_npb = 1
+    return n_npb
+        
 
 def dict_to_str(d: dict[str, Union[str, int, float]]) -> str:
     s = ''
@@ -286,7 +290,8 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'file_name': configs.get('file_name', '/longsequence_data'), # 'longsequence_data' if 'file_name' not in configs else configs['file_name'],
                     'debug': configs.get('debug', False), #False if 'debug' not in configs else configs['debug'],
                     }
-    hidden_1, hidden_2 = configs.get('hidden', [784, 784])
+    hiddens = configs.get('hidden', [784, 784])
+    hidden_1, hidden_2 = hiddens[0], hiddens[1]
     MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
                     'soma_func': configs.get('soma_func', 'sum'), 
                     'l2': configs.get('l2', 0.0),
@@ -294,7 +299,8 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
                     'dropout': configs.get('dropout', 0.0),
-                    'n_npb': [get_n_npb(n_b_1, hidden_1), get_n_npb(n_b_2, hidden_2)], 
+                    # 'n_npb': [get_n_npb(n_b_1, hidden_1), get_n_npb(n_b_2, hidden_2)], 
+                    'n_npb': [configs.get('n_npb', 5), configs.get('n_npb', 5)],
                     'n_branches': [n_b_1, n_b_2], 
                     'sparsity': configs.get('sparsity', 0.0), 
                     'hidden': [hidden_1, hidden_2],
@@ -328,9 +334,9 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 2, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'det_masks': True, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [200, 200],
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 200, 'n_npb': 5, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
+                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [50, 50],
                                       'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
