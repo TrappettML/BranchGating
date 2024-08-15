@@ -299,8 +299,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
                     'dropout': configs.get('dropout', 0.0),
-                    # 'n_npb': [get_n_npb(n_b_1, hidden_1), get_n_npb(n_b_2, hidden_2)], 
-                    'n_npb': [configs.get('n_npb', 5), configs.get('n_npb', 5)],
+                    'n_npb': [configs.get('n_npb', get_n_npb(n_b_1, hidden_1)), configs.get('n_npb', get_n_npb(n_b_2, hidden_2))],
                     'n_branches': [n_b_1, n_b_2], 
                     'sparsity': configs.get('sparsity', 0.0), 
                     'hidden': [hidden_1, hidden_2],
@@ -335,7 +334,7 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 200, 'n_npb': 5, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'sum', 'device': device, 'n_repeat': 0, 
+                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'lse_0.01', 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [50, 50],
                                       'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
     time_end = time.time()

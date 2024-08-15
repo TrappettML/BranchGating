@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=SmallNet
-#SBATCH --output=small_network/%x-%A-%a.out
-#SBATCH --error=small_network/%x-%A-%a.err
+#SBATCH --job-name=LSE
+#SBATCH --output=lse_exper/%x-%A-%a.out
+#SBATCH --error=lse_exper/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4

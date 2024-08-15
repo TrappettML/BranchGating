@@ -27,7 +27,7 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'small_network_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'lse_dyn_nnpb_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
@@ -45,7 +45,8 @@ def run_tune(args):
     param_config['soma_func'] = args.soma_func
     param_config['hidden'] = args.hidden
     param_config['det_masks'] = False
-    param_config['n_npb'] = args.n_npb
+    # param_config['n_npb'] = args.n_npb
+    
     
     run_continual_learning(param_config)
     

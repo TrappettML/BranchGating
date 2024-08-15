@@ -2,14 +2,14 @@
 # param_loops.sh
 
 model_names=('BranchModel')
-# branch_nums=(1 2 7 14 28 49 98 196 382 784)
-branch_nums=(1 2 5 10 20 50 100 200 400 800 1200)
-# soma_funcs=('lse_0.1' 'lse_0.5' 'lse_1.0' 'lse_5.0' 'lse_10.0' 'softmax_0.1' 'softmax_1.0' 'softmax_2.0' 'softmaxsum_0.5' 'max' 'sum' 'median')
-soma_funcs=('sum')
-sparsities=(0.5) # (0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
-repeats=(1 2 3)
-hiddens=(50 100 200 400)
-n_npbs=(1 5 10 20 50 100 200 400 800 1200)
+branch_nums=(1 2 7 14 28 49 98 196 382 784)
+# branch_nums=(1 2 5 10 20 50 100 200 400 800 1200)
+soma_funcs=('lse_0.01' 'lse_0.1' 'lse_0.5' 'lse_1.0' 'lse_2.0' 'lse_5.0' 'lse_10.0')
+# soma_funcs=('sum')
+sparsities=(0.0 0.5) # (0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
+repeats=(1 2 3 4 5)
+hiddens=(784) # (50 100 200 400)
+n_npbs=(1) # 5 10 20 50 100 200 400 800 1200)
 
 for model in "${model_names[@]}"; do
     for repeat in "${repeats[@]}"; do
