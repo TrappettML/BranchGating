@@ -45,7 +45,9 @@ def run_tune(args):
     param_config['soma_func'] = args.soma_func
     param_config['hidden'] = args.hidden
     param_config['det_masks'] = False
-    # param_config['n_npb'] = args.n_npb
+    param_config['n_npb'] = args.n_npb
+    if 'lse' in args.soma_func:
+        del param_config['n_npb']
     
     
     run_continual_learning(param_config)
