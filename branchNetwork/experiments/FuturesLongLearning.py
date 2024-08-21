@@ -47,7 +47,7 @@ def run_tune(args):
     param_config['det_masks'] = False
     param_config['n_npb'] = args.n_npb
     param_config['fixed_weights'] = args.fixed_nnpb
-    if args.fixed_weights:
+    if args.fixed_nnpb == 1:
         del param_config['n_npb']
     
     
