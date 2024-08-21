@@ -92,8 +92,43 @@ class BranchGatingActFunc(nn.Module):
                 x = torch.relu(x)
                 return torch.sum(x, dim=1)
             return my_relu
+        elif 'tanh' in soma_func.lower():
+            def my_tanh(x):
+                x = torch.tanh(x)
+                return torch.sum(x, dim=1)
+            return my_tanh
+        elif 'sigmoid' in soma_func.lower():
+            def my_sigmoid(x):
+                x = torch.sigmoid(x)
+                return torch.sum(x, dim=1)
+            return my_sigmoid
+        elif 'softplus' in soma_func.lower():
+            def my_softplus(x):
+                x = torch.nn.functional.softplus(x)
+                return torch.sum(x, dim=1)
+            return my_softplus
+        elif 'softsign' in soma_func.lower():
+            def my_softsign(x):
+                x = torch.nn.functional.softsign(x)
+                return torch.sum(x, dim=1)
+            return my_softsign
+        elif 'elu' in soma_func.lower():
+            def my_elu(x):
+                x = torch.nn.functional.elu(x)
+                return torch.sum(x, dim=1)
+            return my_elu
+        elif 'gelu' in soma_func.lower():
+            def my_gelu(x):
+                x = torch.nn.functional.gelu(x)
+                return torch.sum(x, dim=1)
+            return my_gelu
+        elif 'selu' in soma_func.lower():
+            def my_selu(x):
+                x = torch.nn.functional.selu(x)
+                return torch.sum(x, dim=1)
+            return my_selu
         else:
-            raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum', 'lse'], got {soma_func}")
+            raise ValueError(f"soma_func must be one of ['sum', 'max', 'softmax', 'softmax_sum', 'lse', 'relu', 'tanh', 'sigmoid', 'softplus', 'softsign', 'elu', 'gelu', 'selu'], got {soma_func}")
         
     def make_learnable_parameters(self):
         self.learnable_parameters = nn.ParameterDict()

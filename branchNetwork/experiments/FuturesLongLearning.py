@@ -27,7 +27,7 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'lse_dyn_nnpb_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'New_somaFuncs_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
@@ -46,7 +46,8 @@ def run_tune(args):
     param_config['hidden'] = args.hidden
     param_config['det_masks'] = False
     param_config['n_npb'] = args.n_npb
-    if 'lse' in args.soma_func:
+    param_config['fixed_weights'] = args.fixed_nnpb
+    if args.fixed_weights:
         del param_config['n_npb']
     
     
@@ -63,6 +64,7 @@ if __name__ == "__main__":
     parser.add_argument('--repeat_num', type=int, default="1", help='Number of repeats')
     parser.add_argument('--hidden', type=parse_list, default="[784, 784]", help='Hidden units and layers')
     parser.add_argument('--n_npb', type=int, default="1", help='Number of neurons per branch')
+    parser.add_argument('--fixed_nnpb', type=int, default="1", help='Fixed weights')
     # Add other parameters as needed
 
     args = parser.parse_args()

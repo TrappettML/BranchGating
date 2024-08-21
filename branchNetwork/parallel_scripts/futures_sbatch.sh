@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=LSE
-#SBATCH --output=lse_exper/%x-%A-%a.out
-#SBATCH --error=lse_exper/%x-%A-%a.err
+#SBATCH --job-name=NewSomaFuncs
+#SBATCH --output=NewSomaFuncs/%x-%A-%a.out
+#SBATCH --error=NewSomaFuncs/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
