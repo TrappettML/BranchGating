@@ -8,8 +8,6 @@ import unittest
 class BranchLayer(nn.Module):
     def __init__(self, n_in: int, n_npb: int, n_b:int , n_next_h: int, device='cpu') -> None:
         '''
-        args:
-        - branch_params (dict): A dictionary containing the following:
             - n_in (int): The number of input features.
             - n_npb (int): The number of neurons per branch.
             - n_b (int): The number of branches.
@@ -41,7 +39,7 @@ class BranchLayer(nn.Module):
         
     def create_weights(self) -> None:
         # self.w = nn.init.kaiming_uniform_(th.empty(self.n_in, self.n_b*self.n_next_h))
-        self.w = nn.init.kaiming_uniform_(th.empty(self.n_npb, self.n_b*self.n_next_h, device=self.device), a=0.1)
+        self.w = nn.init.kaiming_normal_(th.empty(self.n_npb, self.n_b*self.n_next_h, device=self.device))
         self.w = nn.Parameter(self.w)
 
     def create_mask(self) -> None:
