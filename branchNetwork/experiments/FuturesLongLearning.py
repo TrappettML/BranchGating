@@ -27,7 +27,7 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'New_somaFuncs_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'Sum_sparsity_FalseDet_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:

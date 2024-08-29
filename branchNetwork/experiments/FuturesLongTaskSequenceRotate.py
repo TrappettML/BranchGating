@@ -314,7 +314,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
-    for k in ['hidden_laeyrs', 'n_out', 'n_in', 'n_contexts', 'device', 'dropout']:
+    for k in ['n_out', 'n_in', 'n_contexts', 'device', 'dropout']:
         if k in MODEL_CONFIGS.keys():
             del MODEL_CONFIGS[k]
     str_dict = dict_to_str(MODEL_CONFIGS | {'model_name': MODEL} | {'repeat': configs["n_repeat"]} |{'epochs_per_task': TRAIN_CONFIGS['epochs_per_task']})
@@ -333,10 +333,10 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 200, 'n_npb': 5, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 784, 'n_npb': 5, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'lse_0.01', 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [50, 50],
-                                      'file_path': './branchNetwork/data/new_sparse/', 'file_name': 'new_sparse_test', 'l2': 0.0})
+                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
+                                      'file_path': './branchNetwork/data/bernoulli_sparse/', 'file_name': 'text_x', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')

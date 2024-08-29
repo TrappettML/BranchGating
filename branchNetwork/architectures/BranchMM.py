@@ -11,14 +11,14 @@ import numpy as np
 
 
 class BranchModel(nn.Module):
-        '''We want the same number of weights for each layer as Masse has.
-        layer 1 is 784x2000, layer2 is 2000x2000, layer3 is 2000x10'''
+        '''
+        layer 1 is 784x784, layer2 is 784x784, layer3 is 784x10'''
         def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
             super(BranchModel, self).__init__()
             # set_trace()
             learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
             soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
-            # self.layer_1 = nn.Linear(model_configs['n_in'], 2000)
+            # self.layer_1 = nn.Linear(model_configs['n_in'], 784)
             layer_2_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][0]
             layer_3_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][1]
             drop_ratio = model_configs.get('dropout', 0)
@@ -58,10 +58,13 @@ class BranchModel(nn.Module):
         def forward(self, x, context=0):
             # set_trace()
             self.branch_activities_1 = self.layer_1(x)
-            x = self.drop_out(self.act_func(self.gating_1(self.branch_activities_1, context)))
-            self.x_hidden = x
+            self.soma_activities_1 = self.gating_1(self.branch_activities_1, context)
+            x = self.drop_out(self.act_func(self.soma_activities_1))
+            self.x1_hidden = x
             self.branch_activities_2 = self.layer_2(x)
-            x = self.drop_out(self.act_func(self.gating_2(self.branch_activities_2, context)))
+            self.soma_activities_2 = self.gating_2(self.branch_activities_2, context)
+            x = self.drop_out(self.act_func(self.soma_activities_2))
+            self.x2_hidden = x
             return self.layer_3(x)
         
         def heb_branch_update(self, eta=0.1):
@@ -282,14 +285,14 @@ def test_det_branch_model():
     pprint.pprint(outputs)
 
 if __name__ == '__main__':
-    test_Branch()
-    print('BranchModel test passed.')
-    for soma_func in ['sum', 'softmax', 'max']:
-        for temp in [0.1, 1, 10]:
-            if 'soft' in soma_func:
-                soma_func = soma_func + '_' + str(temp)
-            test_Branch(soma_func)
-            print(f'BranchModel test passed for soma_func: {soma_func} and temp: {temp}')
-    test_branch_model_on_varied_configurations()
+    # test_Branch()
+    # print('BranchModel test passed.')
+    # for soma_func in ['sum', 'softmax', 'max']:
+    #     for temp in [0.1, 1, 10]:
+    #         if 'soft' in soma_func:
+    #             soma_func = soma_func + '_' + str(temp)
+    #         test_Branch(soma_func)
+    #         print(f'BranchModel test passed for soma_func: {soma_func} and temp: {temp}')
+    # test_branch_model_on_varied_configurations()
     # unittest.main()
     test_det_branch_model()
