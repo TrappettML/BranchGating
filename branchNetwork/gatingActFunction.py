@@ -164,7 +164,8 @@ class BranchGatingActFunc(nn.Module):
         context = str(context)
         gate = self.get_context(context)
         # when n_b =1 and soma_act_func = sum, equal to masse model.
-        out = self.soma_act_func(x * gate)
+        self.gated_branches = x * gate
+        out = self.soma_act_func(self.gated_branches)
         # print(f'out shape: {out.shape}')
         return out
             

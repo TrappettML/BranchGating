@@ -53,16 +53,19 @@ class BranchModel(nn.Module):
             
             self.layer_3 = nn.Linear(layer_3_n_in, model_configs['n_out'], device=model_configs['device'])
             self.drop_out = nn.Dropout(drop_ratio)
-            self.act_func = nn.ReLU()  
+            self.act_func = model_configs.get('act_func', nn.ReLU)()
+            
                      
         def forward(self, x, context=0):
             # set_trace()
             self.branch_activities_1 = self.layer_1(x)
             self.soma_activities_1 = self.gating_1(self.branch_activities_1, context)
+            self.gated_branch_1 = self.gating_1.gated_branches
             x = self.drop_out(self.act_func(self.soma_activities_1))
             self.x1_hidden = x
             self.branch_activities_2 = self.layer_2(x)
             self.soma_activities_2 = self.gating_2(self.branch_activities_2, context)
+            self.gated_branch_2 = self.gating_2.gated_branches
             x = self.drop_out(self.act_func(self.soma_activities_2))
             self.x2_hidden = x
             return self.layer_3(x)

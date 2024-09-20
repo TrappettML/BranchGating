@@ -294,6 +294,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     hidden_1, hidden_2 = hiddens[0], hiddens[1]
     MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
                     'soma_func': configs.get('soma_func', 'sum'), 
+                    'act_func': configs.get('act_func', nn.ReLU), 
                     'l2': configs.get('l2', 0.0),
                     'lr': configs.get('lr', 0.0001),
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
@@ -305,7 +306,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'hidden': [hidden_1, hidden_2],
                     'n_in': 784, 
                     'n_out': 10,
-                    'det_masks': configs.get('det_masks', True),                  
+                    'det_masks': configs.get('det_masks', True),           
                     }
 
     all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
@@ -327,14 +328,25 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS["sparsity"]}, n_b_1 {n_b_1}, learn_gates {MODEL_CONFIGS["learn_gates"]}')
 
 
+from torch import Tensor
+class FReLU(nn.Module):
+    def __init__(self, inplace: bool = False) -> None:
+        super().__init__()
+        
+        
+    def forward(self, input: Tensor) -> Tensor:
+        return nn.functional.relu(input) + nn.functional.relu(-input)
+    
+    def __repr__(self) -> str:
+        return 'FReLU()'
 
 if __name__=='__main__':
     device = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 784, 'n_npb': 5, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'lse_0.01', 'device': device, 'n_repeat': 0, 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'lse_0.01', 'act_func': FReLU, 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
                                       'file_path': './branchNetwork/data/bernoulli_sparse/', 'file_name': 'text_x', 'l2': 0.0})
     time_end = time.time()

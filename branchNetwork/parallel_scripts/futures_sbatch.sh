@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=FalseDetSum
-#SBATCH --output=SumSparseFalseDet/%x-%A-%a.out
-#SBATCH --error=SumSparseFalseDet/%x-%A-%a.err
+#SBATCH --job-name=ActFuncs
+#SBATCH --output=ActFuncs/%x-%A-%a.out
+#SBATCH --error=ActFuncs/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
