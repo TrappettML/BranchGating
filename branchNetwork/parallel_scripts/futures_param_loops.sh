@@ -21,7 +21,7 @@ for model in "${model_names[@]}"; do
                     for hidden in "${hiddens[@]}"; do
                         for act_func in "${act_funcs[@]}"; do
                             for det_gate in "${det_gates[@]}"; do
-                                echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --hidden [$hidden,$hidden] --act_func $act_func --det_gate $det_gate"
+                                echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --hidden [$hidden,$hidden] --act_func $act_func --determ_gates $det_gate"
                             done
                         done
                     done
