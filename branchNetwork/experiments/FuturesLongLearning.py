@@ -66,6 +66,7 @@ def run_tune(args):
         del param_config['n_npb']
     act_map = {'ReLU': nn.ReLU, 'LeakyReLU': nn.LeakyReLU, 'FReLU': FReLU}
     param_config['act_func'] = act_map[args.act_func]
+    param_config['dropout'] = 0.0
     
     
     run_continual_learning(param_config)

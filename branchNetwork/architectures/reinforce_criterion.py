@@ -21,10 +21,10 @@ class RLCrit(CrossEntropyLoss):
         # the distribution is over the true outputs, the input_predicitons are the noisy actions/predictions/samples from the distribution
         log_probs = torch.distributions.Categorical(logits=input).log_prob(input_predictions) 
         # reward = noisy predictions x true labels // I got this from Christians paper for the RL learning rule.
-        y_y_hat = torch.sum(torch.nn.functional.one_hot(target, num_classes=10) * input_hat, dim=1)  
-        self.baseline = (self.baseline * self.count + y_y_hat) / (self.count + 1) 
+        yyhat = torch.sum(torch.nn.functional.one_hot(target, num_classes=10) * input_hat, dim=1)  
+        self.baseline = (self.baseline * self.count + torch.mean(yyhat)) / (self.count + 1) 
         self.count += 1 # count for running average
-        td_error = y_y_hat - self.baseline # TD error
+        td_error = yyhat - self.baseline # TD error
         loss = -(log_probs * td_error).mean()
         return loss
 

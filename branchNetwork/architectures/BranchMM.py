@@ -76,9 +76,9 @@ class BranchModel(nn.Module):
         def heb_branch_update(self, eta=0.1):
             pass
 
-        def __repr__(self):
+        # def __repr__(self):
             
-            return super().__repr__() + f'\n path: {os.path.abspath(inspect.getfile(self.__class__))}'
+        #     return super().__repr__() + f'\n path: {os.path.abspath(inspect.getfile(self.__class__))}'
         
         
 def test_Branch(soma_func='sum'):

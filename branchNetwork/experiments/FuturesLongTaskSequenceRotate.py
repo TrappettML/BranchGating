@@ -311,7 +311,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'n_out': 10,
                     'det_masks': configs.get('det_masks', True),           
                     }
-
+    print(f'{MODEL_CONFIGS=}\n{TRAIN_CONFIGS=}\n{MODEL=}\n{MODEL_DICT=}')
     all_task_accuracies = train_model(MODEL, TRAIN_CONFIGS, MODEL_DICT, MODEL_CONFIGS)
     sequence_metrics = process_all_sequence_metrics(all_task_accuracies['first_last_data'])
     m = all_task_accuracies.pop('model')
@@ -350,7 +350,7 @@ if __name__=='__main__':
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'sum', 'act_func': nn.ReLU, 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
+                                      'sparsity': 0.5, 'learn_gates': False, 'debug': False, 'lr': 0.0001, 'hidden': [784, 784],
                                       'file_path': './branchNetwork/data/testing_run/', 'file_name': 'text_x', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
