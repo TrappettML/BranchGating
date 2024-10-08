@@ -40,7 +40,7 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'Sum_sparsity_TFDetGates_ActFunc_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'RL_learning_rule_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
@@ -61,6 +61,7 @@ def run_tune(args):
     param_config['det_masks'] = gates_map[args.determ_gates]
     param_config['n_npb'] = args.n_npb
     param_config['fixed_weights'] = args.fixed_nnpb
+    param_config['learning_rule'] = args.learning_rule
     if args.fixed_nnpb == 1:
         del param_config['n_npb']
     act_map = {'ReLU': nn.ReLU, 'LeakyReLU': nn.LeakyReLU, 'FReLU': FReLU}
@@ -83,6 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('--fixed_nnpb', type=int, default="1", help='Fixed weights')
     parser.add_argument('--act_func', type=str, default="ReLU", help='Activation function')
     parser.add_argument('--determ_gates', type=int, default="0", help='Deterministic gates')
+    parser.add_argument('--learning_rule', type=str, default="sl", help='sl or rl')
     # Add other parameters as needed
 
     args = parser.parse_args()

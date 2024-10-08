@@ -8,6 +8,7 @@ from branchNetwork.architectures.Simple import SimpleModel
 # from branchNetwork.dataloader import load_permuted_flattened_mnist_data
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.utils.timing import timing_decorator
+from branchNetwork.architectures.reinforce_criterion import RLCrit
 
 from torch.utils.data import DataLoader
 from torch import nn
@@ -158,7 +159,7 @@ def setup_model(model_name: str,
     model = model_dict[model_name](model_configs)   
     optim = torch.optim.Adam(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'])
     # optim = AdamSI(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'], c=0.2)
-    criterion = nn.CrossEntropyLoss()
+    criterion = model_configs['loss_func']
     return model, optim, criterion
 
 def setup_loaders(rotation_degrees: list[int], batch_size: int, eval_tasks: list[int]):
@@ -281,6 +282,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     MODEL = configs['model_name']
     MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel ]
     MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    loss_map = {'sl': nn.CrossEntropyLoss(), 'rl': RLCrit()}
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,
                     'epochs_per_task': epochs_per_task,
@@ -297,6 +299,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'act_func': configs.get('act_func', nn.ReLU), 
                     'l2': configs.get('l2', 0.0),
                     'lr': configs.get('lr', 0.0001),
+                    'loss_func': loss_map[configs.get('learning_rule', 'sl')],
                     'n_contexts': len(TRAIN_CONFIGS['rotation_degrees']), 
                     'device': configs.get('device', 'cpu'), 
                     'dropout': configs.get('dropout', 0.0),
@@ -315,7 +318,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     # train.report({'remembering': remembering, 'forward_transfer': forward_transfer})
     # print(f'Remembering: {remembering}; Forward Transfer: {forward_transfer}')
     # pickle the results
-    for k in ['n_out', 'n_in', 'n_contexts', 'device', 'dropout']:
+    for k in ['n_out', 'n_in', 'n_contexts', 'device', 'dropout', 'l2', 'hidden', 'learn_gates', 'act_func']:
         if k in MODEL_CONFIGS.keys():
             del MODEL_CONFIGS[k]
     str_dict = dict_to_str(MODEL_CONFIGS | {'model_name': MODEL} | {'repeat': configs["n_repeat"]} |{'epochs_per_task': TRAIN_CONFIGS['epochs_per_task']})
@@ -325,7 +328,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'si_all_task_accuracies{str_dict}')
     torch.save(m.state_dict(), f'{TRAIN_CONFIGS["file_path"]}/state_dict_{str_dict}')
     pickle_data(f"{TRAIN_CONFIGS=}, {MODEL_CONFIGS=}", TRAIN_CONFIGS['file_path'], f'configs{str_dict}')
-    print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS["sparsity"]}, n_b_1 {n_b_1}, learn_gates {MODEL_CONFIGS["learn_gates"]}')
+    print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS}')
 
 
 from torch import Tensor
@@ -346,7 +349,7 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'soma_func': 'lse_0.01', 'act_func': FReLU, 'device': device, 'n_repeat': 0, 
+                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'lse_0.01', 'act_func': FReLU, 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
                                       'file_path': './branchNetwork/data/bernoulli_sparse/', 'file_name': 'text_x', 'l2': 0.0})
     time_end = time.time()

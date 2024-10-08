@@ -27,6 +27,7 @@ class BranchLayer(nn.Module):
         assert self.mask.shape == (self.n_in, self.n_b*self.n_next_h), f'mask shape is {self.mask.shape} and should be {(self.n_in, self.n_b*self.n_next_h)}'
     
     def forward(self, x):
+        # set_trace()
         x = x.to(self.device)
         # local_mask = self.mask != 0
         local_weights = self.mask.clone().detach().requires_grad_(False)
