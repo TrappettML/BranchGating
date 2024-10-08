@@ -328,7 +328,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     pickle_data(all_task_accuracies, TRAIN_CONFIGS['file_path'], f'si_all_task_accuracies{str_dict}')
     torch.save(m.state_dict(), f'{TRAIN_CONFIGS["file_path"]}/state_dict_{str_dict}')
     pickle_data(f"{TRAIN_CONFIGS=}, {MODEL_CONFIGS=}", TRAIN_CONFIGS['file_path'], f'configs{str_dict}')
-    print(f'Finished training {MODEL} with sparsity {MODEL_CONFIGS}')
+    print(f'Finished training {MODEL} with {MODEL_CONFIGS}')
 
 
 from torch import Tensor
@@ -349,8 +349,8 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'lse_0.01', 'act_func': FReLU, 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
+                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'sum', 'act_func': nn.ReLU, 'device': device, 'n_repeat': 0, 
+                                      'sparsity': 0.0, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
                                       'file_path': './branchNetwork/data/testing_run/', 'file_name': 'text_x', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
