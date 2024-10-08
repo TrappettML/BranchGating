@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=ActFuncs
-#SBATCH --output=ActFuncs/%x-%A-%a.out
-#SBATCH --error=ActFuncs/%x-%A-%a.err
+#SBATCH --job-name=RLRule
+#SBATCH --output=RL_rule/%x-%A-%a.out
+#SBATCH --error=RL_rule/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
