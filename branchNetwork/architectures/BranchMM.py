@@ -24,7 +24,7 @@ class BranchModel(nn.Module):
             # self.layer_1 = nn.Linear(model_configs['n_in'], 784)
             layer_2_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][0]
             layer_3_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][1]
-            drop_ratio = model_configs.get('dropout', 0)
+            drop_ratio = model_configs.get('dropout', 0.0)
             
             self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
                                       n_npb=model_configs['n_npb'][0],
