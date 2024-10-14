@@ -8,7 +8,7 @@ class RLCrit(CrossEntropyLoss):
     def __init__(self, ignore_index=-100):
         super(RLCrit, self).__init__(ignore_index=ignore_index)
         # print('Using RLCrit')
-        self.baseline = 0
+        self.baseline = torch.tensor([0])
         self.count = 0
 
     def forward(self, input, target):
@@ -17,15 +17,19 @@ class RLCrit(CrossEntropyLoss):
         input_detach = input.clone().detach()
         input_norm = torch.nn.functional.normalize(input_detach, p=2, dim=-1)
         input_hat = input_norm + torch.randn_like(input_norm)
+        input_probs = F.softmax(input_hat, dim=1) # Batch x 10 
         input_predictions = torch.argmax(F.softmax(input_hat, dim=1), dim=-1)
         # the distribution is over the true outputs, the input_predicitons are the noisy actions/predictions/samples from the distribution
-        log_probs = torch.distributions.Categorical(logits=input).log_prob(input_predictions) 
+        log_probs = torch.distributions.Categorical(logits=input).log_prob(input_predictions) # verify shape
         # reward = noisy predictions x true labels // I got this from Christians paper for the RL learning rule.
-        yyhat = torch.sum(torch.nn.functional.one_hot(target, num_classes=10) * input_hat, dim=1)  
-        self.baseline = (self.baseline * self.count + torch.mean(yyhat)) / (self.count + 1) 
+        yyhat = torch.sum(torch.nn.functional.one_hot(target, num_classes=10) * input_probs, dim=1)  # batchx10 x batchx10 -> batch
+        if yyhat.shape[0] != self.baseline.shape[0] and self.count > 0:
+            pad_size = self.baseline.shape[0] - yyhat.shape[0]
+            yyhat = torch.nn.functional.pad(yyhat, (0, 0, 0, pad_size), value=0) # add padding to match baseline
+        self.baseline = (self.baseline * self.count + yyhat) / (self.count + 1) # add padding
         self.count += 1 # count for running average
         td_error = yyhat - self.baseline # TD error
-        loss = -(log_probs * td_error).mean()
+        loss = -(log_probs * td_error).mean() # check if convert to vector
         return loss
 
         # with torch.no_grad(): # is this necessary?
