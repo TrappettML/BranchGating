@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=RLRule
-#SBATCH --output=RL_rule/%x-%A-%a.out
-#SBATCH --error=RL_rule/%x-%A-%a.err
+#SBATCH --job-name=RLTDRule
+#SBATCH --output=RLTDrule/%x-%A-%a.out
+#SBATCH --error=RLTDrule/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
