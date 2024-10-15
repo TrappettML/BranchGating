@@ -13,7 +13,7 @@ import warnings
 from ipdb import set_trace
 from branchNetwork.Data_Analysis.Analysis_pipeline import plot_comparison_scatter_matrix
 
-from branchNetwork.Data_Analysis.DetermGates_correlation import parse_filename
+# from branchNetwork.Data_Analysis.DetermGates_correlation import parser_filename
 
 
 # new metrics for FT and Remembering
@@ -422,13 +422,16 @@ def training_plots(data_dict_acc, plot_folder):
     sparsity_values = sorted(set(key[0] for key in data_dict_acc.keys()))
     det_mask = sorted(set(key[2] for key in data_dict_acc.keys()))
     n_branch_values = sorted(set(key[1] for key in data_dict_acc.keys()))
-    repeat_values = sorted(set(key[3] for key in data_dict_acc.keys()))
     for d in det_mask:
         for n in n_branch_values:
             c = 0
             for s in sparsity_values:
-                prep_data = prep_data_for_plotting(data_dict_acc, (s, n, d, 5), repeat_values)
-                fig = plot_train_sequence_accuracies(prep_data[0], prep_data[1], prep_data[2], 20, (s, n, d, 5), save_fig=True)
+                repeat_values = sorted(set(key[3] for key in data_dict_acc.keys() if key[0] == s and key[1] == n and key[2] == d))
+                key = (s, n, d, repeat_values[0])
+                if len(repeat_values) == 0:
+                    continue
+                prep_data = prep_data_for_plotting(data_dict_acc, key, repeat_values)
+                fig = plot_train_sequence_accuracies(prep_data[0], prep_data[1], prep_data[2], 20, key, save_fig=True)
                 if c == 0:
                     with open(f'{plot_folder}/training_plots_determ_{d}_n_b_{n}.html', 'w') as f:
                         f.write(fig.to_html(full_html=True, include_plotlyjs='cdn'))
@@ -439,39 +442,44 @@ def training_plots(data_dict_acc, plot_folder):
 
                     c += 1
                 # Heatmap plot
-                trapz1, train_order = prep_accuracy_heatmap_metric(data_dict_acc, (s, n, d, 5))
-                fig1 = plot_accuracy_heatmap(trapz1, train_order, (s, n, d, 5))
+                trapz1, train_order = prep_accuracy_heatmap_metric(data_dict_acc, key)
+                fig1 = plot_accuracy_heatmap(trapz1, train_order, key)
                 with open(f'{plot_folder}/training_plots_determ_{d}_n_b_{n}.html', 'a') as f:
                     f.write(fig1.to_html(full_html=False, include_plotlyjs=False))
 
+def file_check(file_path):
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+    return file_path
+
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_sl_comparison_plots/")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_sl_comparison_plots")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
     rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RL_mean_rule/'
     count = 0
     for path in [sl_path, rl_path]:
         if path == rl_path:
-            parse_filename = rl_filename_parser
+            parser_name = rl_filename_parser
+            folder_name = 'RL_plots'
         else:
-            parse_filename = parse_filename_accuracies
-        data = parse_data(path, parse_filename)
+            parser_name = parse_filename_accuracies
+            folder_name = 'SL_plots'
+        data = parse_data(path, parser_name)
         figs = pipeline_heatmap(data)
         for i, fig in enumerate(figs):
             if count == 0:
-                with open(f'{results_path}/determ_gating_true_false_heatmaps.html', 'w') as f:
+                with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'w') as f:
                     f.write(fig.to_html(full_html=True, include_plotlyjs='cdn'))
                     print('saved first fig')
             else:
-                with open(f'{results_path}/determ_gating_true_false_heatmaps.html', 'a') as f:
+                with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'a') as f:
                     f.write(fig.to_html(full_html=False, include_plotlyjs=False))
             count += 1
+        data_dict_acc = load_all_accuracies(path, parser_name)
+        training_plots(data_dict_acc, f'{results_path}/{folder_name}') 
     print('finished heatmap figs')
-    for path in [sl_path, rl_path]:
-        data_dict_acc = load_all_accuracies(path)
-        training_plots(data_dict_acc, results_path)
     print('finished training plots')
-
     comp_fig_pipeline(sl_path, rl_path, results_path)
        
        
