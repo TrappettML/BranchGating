@@ -156,7 +156,7 @@ def setup_model(model_name: str,
                 model_dict: Union[None, dict[str, Callable]]):
     
     assert model_name in model_dict.keys(), f'{model_name} not in model_dict'
-    model = model_dict[model_name](model_configs)   
+    model = torch.compile(model_dict[model_name](model_configs)) # trying torch jit   
     optim = torch.optim.Adam(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'])
     # optim = AdamSI(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'], c=0.2)
     criterion = model_configs['loss_func']

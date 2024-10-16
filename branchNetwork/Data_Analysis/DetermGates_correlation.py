@@ -14,20 +14,23 @@ import pickle
 import os
 import re
 
-from branchNetwork.architectures.BranchMM import BranchModel
-from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from sklearn.metrics.pairwise import cosine_similarity
 import ray
 from tqdm import tqdm
 from ipdb import set_trace
 import time
 
+from branchNetwork.architectures.BranchMM import BranchModel
+from branchNetwork.dataloader import load_rotated_flattened_mnist_data
+from branchNetwork.Data_Analysis.ft_rem_pipeline import make_plots_folder
+
+
+
 os.environ['OMP_NUM_THREADS'] = '2'
 torch.set_num_threads(2)
 
 for i in tqdm(range(10), disable=True):
     time.sleep(1)
-
 
 def parse_filename(filename: str, file_type='state_dict') -> tuple:
     # Regex patterns for different filename types
@@ -47,27 +50,39 @@ def parse_filename(filename: str, file_type='state_dict') -> tuple:
         sparsity = float(matches.group(5))
         n_branch_0, n_branch_1 =int(matches.group(3)), int(matches.group(4))
         n_npb_0, n_npb_1 = int(matches.group(1)), int(matches.group(2))
-        determ = bool(matches.group(6))
+        determ = str(matches.group(6))
         repeat = int(matches.group(7))
-        return (sparsity, n_branch_0, n_npb_0, repeat)
+        return (sparsity, n_branch_0, determ, repeat)
     else:
         return None
+    
+def rl_filename_parser(filename: str, file_type='state_dict') -> tuple:
+    state_pattern = r"state_dict__soma_func_sum_lr_0.0001_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20"
+    config_pattern = r"configs_soma_func_sum_lr_0.0001_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20.pkl"
+    if file_type == 'state_dict':
+        pattern = state_pattern
+    elif file_type == 'config':
+        pattern = config_pattern
+    matches = re.search(pattern, filename)
+    sparsity = float(matches.group(5))
+    n_branch = int(matches.group(3))
+    n_npb = int(matches.group(1))
+    repeat = int(matches.group(7))
+    det_mask = str(matches.group(6))
+    return (sparsity, n_branch, det_mask, repeat)
 
-def load_state_models(directory: str) -> tuple:
+def load_state_models(directory: str, file_parser=parse_filename) -> tuple:
     # Dictionaries to hold data from all pickle files
     state_dicts = {}
     config_paths = {}
-
     # Loop through each file in the directory
     for root, dirs, files in os.walk(directory):
-        
         for file in files:
             # print(file)
             if 'state_dict' in file:
                 # print(file)
                 # Construct the full path to the file
                 file_path = os.path.join(root, file)
-
                 # Parse the filename into a tuple of variables and determine the data type
                 state_dict_key = parse_filename(file, 'state_dict')
                 if state_dict_key:
@@ -307,7 +322,7 @@ def plot_all_activations(data_dict, file_name='activations_plot.png'):
     cbar.set_label('Sparsity')
 
     # Adjust layout and add a supertitle
-    fig.suptitle(f'Similarity of 0° compared to other Rotations with n_b/n_npb:{_k[1]}/{_k[2]}', fontsize=16)
+    fig.suptitle(f'Similarity of 0° compared to other Rotations with n_b:{_k[1]}', fontsize=16)
     plt.tight_layout()
     plt.savefig(f'./{file_name}', bbox_inches='tight')
 
@@ -320,18 +335,6 @@ def full_similarity_pipeline(n_branches, state_paths, config_paths, sparsities, 
     all_similarities_dict = {k:v for d in all_similarities for k,v in d.items()}
     plot_all_activations(all_similarities_dict, f'branchNetwork/Data_Analysis/activations_plot_n_b_{n_branches}.png')
     
-def calc_mean_similarities_for_det_bool(state_paths, sparsities, repeat, config_paths, n_b):
-    target_keys = [(sparsity, n_b, int(784/n_b), repeat) for sparsity in sparsities]
-    all_similarities = [mean_similarity_pipeline(key, state_paths, config_paths) for key in tqdm(target_keys, desc=f'branches: {n_b}')]
-    all_similarities_dict = {k:v for d in all_similarities for k,v in d.items()}
-    return all_similarities_dict
-    
-def calc_similarities_for_det_bool(state_paths, sparsities, repeat, config_paths, n_b):
-    target_keys = [(sparsity, n_b, int(784/n_b), repeat) for sparsity in sparsities]
-    # set_trace()
-    all_similarities = [corr_similarity_pipeline(key, state_paths, config_paths) for key in tqdm(target_keys, desc=f'branches: {n_b}')]
-    all_similarities_dict = {k:v for d in all_similarities for k,v in d.items()}
-    return all_similarities_dict
 
 def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_dict_labels=['Determ True', 'Determ False'], file_name='activations_plot.png'):
     # Extract continuous values and use them for the color map
@@ -351,13 +354,13 @@ def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_
             
             continuous_values = sorted(data_dict1.keys())
             for key in continuous_values:
-                sparsity, n_b, n_npb, repeat = key
-                if (sparsity, n_b, n_npb) not in seen_combinations:
-                    seen_combinations.add((sparsity, n_b, n_npb))
+                sparsity, n_b, det_bool, repeat = key
+                if (sparsity, n_b, det_bool) not in seen_combinations:
+                    seen_combinations.add((sparsity, n_b, det_bool))
                     all_repeats = []
                     all_repeats = []
                     # Collect data across all repeats for this combination
-                    for repeat_key in [k for k in data_dict.keys() if k[:3] == (sparsity, n_b, n_npb)]:
+                    for repeat_key in [k for k in data_dict.keys() if k[:3] == (sparsity, n_b, det_bool)]:
                         layer_data = data_dict[repeat_key]
                         layer_specific_data = {k: v for k, v in layer_data.items() if k[1] == layer}
                         angles = [int(k[0]) for k in layer_specific_data.keys()]
@@ -396,49 +399,43 @@ def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_
     fig.supylabel('Cosine Similarity Score', fontsize=20)
     fig.supxlabel('Rotation Angle', fontsize=20)
     # Adjust layout and add a supertitle
-    fig.suptitle(f'Similarity of 0° compared to other Rotations with n_b/n_npb:{key[1]}/{key[2]}', fontsize=16, y=1.01)
+    fig.suptitle(f'Similarity of 0° compared to other Rotations with n_b:{key[1]}', fontsize=16, y=1.01)
     # plt.tight_layout()
     plt.savefig(f'./{metric}_{file_name}', bbox_inches='tight')
     
-    
+def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path):
+    sparsity_values = sorted(set(key[0] for key in state_paths.keys()))
+    det_values = sorted(set(key[2] for key in state_paths.keys()))
+    determ_similarities = defaultdict(dict)
+    for d in det_values:
+        print('Calculating similarities for deterministic:', d)
+        for s in sparsity_values:
+            print('Calculating similarities for sparsity:', s)
+            repeat_values = sorted(set(key[3] for key in state_paths.keys() if key[0] == s and key[2] == d and n_b == key[1]))
+            for r in repeat_values:
+                determ_similarities[d] |= mean_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
+                # set_trace()
+                # determ_similarities[d] |= corr_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
+    set_trace()
+    plot_all_activations_true_false(determ_similarities['True'], determ_similarities['False'], metric='mean', file_name=f'{parent_path}/mean_similarities_plot_n_b_{n_b}.png')
+    print(f'Plots saved at {parent_path}/mean_similarities_plot_n_b_{n_b}.png')
+
+
 def main():
-    parent_path = "/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/deterministic_gating_new/"
-    # config_file = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/deterministic_gating_new/deterministic_gates_20240806_053600/configs_learn_gates_False_soma_func_sum_l2_0.0_lr_0.0001_n_npb_28_28_n_branches_28_28_sparsity_0.0_hidden_784_784_det_masks_True_model_name_BranchModel_repeat_5_epochs_per_task_20.pkl'
-    # state_dict_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/deterministic_gating_new/deterministic_gates_20240806_053600/state_dict__learn_gates_False_soma_func_sum_l2_0.0_lr_0.0001_n_npb_28_28_n_branches_28_28_sparsity_0.0_hidden_784_784_det_masks_True_model_name_BranchModel_repeat_5_epochs_per_task_20'
-    # state_paths are dictionaries with keys: (sparsity, n_branch_0, n_npb_0, repeat)
-    # state_paths, config_paths = load_state_models(parent_path)
-    # sparsities, n_branches, n_npbs, repeats = map(set, zip(*state_paths.keys()))
-    # # n_branches = sorted(list(n_branches))
-    # n_branches = [1,2,]
-    # # Look at all models with n_b=1
-    # # target_keys = [(i/10, 1, 784, 1) for i in range(0, 10)]
-    # # r_corr_similarity_pipeline = ray.remote(corr_similarity_pipeline)
-    # # ray.init(num_cpus=len(target_keys))
-    # # ray.init(num_cpus=len(sparsities))
-    # # all_similarities = ray.get([r_corr_similarity_pipeline.remote(key, state_paths, config_paths) for key in target_keys])
-    # # ray.get([full_similarity_pipeline.remote(n_b, state_paths, config_paths, sparsities, 1) for n_b in n_branches])
-    # for n_b in tqdm(n_branches):
-    #     full_similarity_pipeline(n_b, state_paths, config_paths, sparsities, 1)
-    # # ray.shutdown()
-    # all_similarities = [corr_similarity_pipeline(key, state_paths, config_paths) for key in target_keys]
-    # all_similarities_dict = {k:v for d in all_similarities for k,v in d.items()}
-    # plot_all_activations(all_similarities_dict, 'branchNetwork/Data_Analysis/activations_plot.png')
-    
-    det_false_path = "/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/deterministic_gating_false/"
-    det_true_path = "/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/deterministic_gating_new/"
-    state_true_paths, config_true_paths = load_state_models(det_true_path)
-    state_false_paths, config_false_paths = load_state_models(det_false_path)
-    sparsities_t, n_branches_t, n_npbs_t, repeats_t = map(set, zip(*state_true_paths.keys()))
-    sparsities_f, n_branches_f, n_npbs_f, repeats_f = map(set, zip(*state_false_paths.keys()))
-    n_branches = [1, 2, 7, 14, 28, 49, 98]
-    for n_b in n_branches:
-        # det_true_similarities = [calc_similarities_for_det_bool(state_true_paths, sparsities_t, r, config_true_paths, n_b) for r in repeats_t]
-        # det_false_similarities = [calc_similarities_for_det_bool(state_false_paths, sparsities_f, r, config_false_paths, n_b) for r in repeats_f]
-        det_true_similarities = [calc_mean_similarities_for_det_bool(state_true_paths, sparsities_t, r, config_true_paths, n_b) for r in repeats_t]
-        det_false_similarities = [calc_mean_similarities_for_det_bool(state_false_paths, sparsities_f, r, config_false_paths, n_b) for r in repeats_f]
-        det_true_similarities = {k:v for d in det_true_similarities for k,v in d.items()}
-        det_false_similarities = {k:v for d in det_false_similarities for k,v in d.items()}
-        plot_all_activations_true_false(det_true_similarities, det_false_similarities, metric='mean', file_name=f'mean_similarities_plot_n_b_{n_b}.png')
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_sl_comparison_plots/similarity_plots/")
+    sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RL_mean_rule/'
+    n_branches = [1] # , 2, 7, 14, 28, 49, 98]
+    for path in [sl_path]: # , rl_path
+        if path == rl_path:
+            parser_name = rl_filename_parser
+            folder_name = 'RL_plots'
+        else:
+            parser_name = parse_filename 
+            folder_name = 'SL_plots'
+        state_paths, config_paths = load_state_models(path, parser_name)
+        for n_b in n_branches:
+            loops_plot_for_mean_similarity(state_paths, config_paths, n_b, f'{results_path}/{folder_name}/')
 
 
 if __name__=='__main__':
