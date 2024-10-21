@@ -101,7 +101,7 @@ def get_model(config_file: str, state_file: str) -> tuple:
     for key, value in {'n_out':10, 'n_in':784, 'n_contexts':len(configs['TRAIN_CONFIGS']['rotation_degrees']), 'device':'cpu', 'dropout':0}.items():
         configs['MODEL_CONFIGS'][key] = value
     model = BranchModel(configs['MODEL_CONFIGS'])
-    model.load_state_dict(torch.load(state_file))
+    model.load_state_dict(torch.load(state_file, weights_only=False))
     model.eval()
     rotations = configs['TRAIN_CONFIGS']['rotation_degrees']
     return model, rotations
@@ -338,7 +338,7 @@ def full_similarity_pipeline(n_branches, state_paths, config_paths, sparsities, 
 
 def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_dict_labels=['Determ True', 'Determ False'], file_name='activations_plot.png'):
     # Extract continuous values and use them for the color map
-    continuous_values = sorted(data_dict1.keys())
+    # continuous_values = sorted(data_dict1.keys())
     norm = Normalize(vmin=0, vmax=1)
     sm = plt.cm.ScalarMappable(cmap=viridis, norm=norm)
 
@@ -352,7 +352,7 @@ def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_
             ax = axs[i, col]
             seen_combinations = set()
             
-            continuous_values = sorted(data_dict1.keys())
+            continuous_values = sorted(data_dict.keys())
             for key in continuous_values:
                 sparsity, n_b, det_bool, repeat = key
                 if (sparsity, n_b, det_bool) not in seen_combinations:
@@ -401,7 +401,7 @@ def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_
     # Adjust layout and add a supertitle
     fig.suptitle(f'Similarity of 0° compared to other Rotations with n_b:{key[1]}', fontsize=16, y=1.01)
     # plt.tight_layout()
-    plt.savefig(f'./{metric}_{file_name}', bbox_inches='tight')
+    plt.savefig(file_name, bbox_inches='tight')
     
 def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path):
     sparsity_values = sorted(set(key[0] for key in state_paths.keys()))
@@ -416,17 +416,25 @@ def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path)
                 determ_similarities[d] |= mean_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
                 # set_trace()
                 # determ_similarities[d] |= corr_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
-    set_trace()
+    # set_trace()
     plot_all_activations_true_false(determ_similarities['True'], determ_similarities['False'], metric='mean', file_name=f'{parent_path}/mean_similarities_plot_n_b_{n_b}.png')
     print(f'Plots saved at {parent_path}/mean_similarities_plot_n_b_{n_b}.png')
+
+def file_check(file_path):
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+    return file_path
 
 
 def main():
     results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_rule_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
     rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_TD_rule/RL/'
+    loop_ray = ray.remote(loops_plot_for_mean_similarity)
+    loops = []
     n_branches = [1] # , 2, 7, 14, 28, 49, 98]
-    for path in [sl_path]: # , rl_path
+    # ray.init(num_cpus=10)
+    for path in [rl_path]: # , rl_path
         if path == rl_path:
             parser_name = rl_filename_parser
             folder_name = 'RL_plots'
@@ -435,7 +443,10 @@ def main():
             folder_name = 'SL_plots'
         state_paths, config_paths = load_state_models(path, parser_name)
         for n_b in n_branches:
-            loops_plot_for_mean_similarity(state_paths, config_paths, n_b, f'{results_path}/{folder_name}/')
+            # loops.append(loop_ray.remote(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}/')))
+            loops_plot_for_mean_similarity(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}/'))
+    # ray.get(loops)
+    # ray.shutdown()
 
 
 if __name__=='__main__':
