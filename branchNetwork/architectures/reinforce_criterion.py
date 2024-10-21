@@ -11,6 +11,7 @@ class RLCrit(CrossEntropyLoss):
         # print('Using RLCrit')
         self.baseline = torch.tensor([0]).requires_grad_(False).detach()
         self.count = 0
+        self.temperature = 1.0
 
     def forward(self, input, target):
         # using the script from simple_pg.py from spinningup at https://github.com/openai/spinningup/blob/master/spinup/examples/pytorch/pg_math/1_simple_pg.py#L44
@@ -39,12 +40,10 @@ class RLCrit(CrossEntropyLoss):
         # set_trace()
         return loss
 
-        # with torch.no_grad(): # is this necessary?
-        #     input_hat = input + torch.randn_like(input) # add noise to output of network
-        #     input_hat_probs = torch.softmax(input_hat, dim=-1) # convert to probabilities for 
-        #     y_y_hat = torch.nn.functional.one_hot(target) * input_hat_probs
-        #     self.baseline = (self.baseline * self.count + y_y_hat) / (self.count + 1)
-        #     td_error = y_y_hat - self.baseline
-        # loss = super().forward(input_hat, td_error)
-        # self.count += 1
-        # return loss
+    def gumbel_softmax_sample(self, logits):
+        # Generate Gumbel noise
+        gumbel_noise = -torch.empty_like(logits).exponential_().log()
+        # Add Gumbel noise to the logits
+        y = logits + gumbel_noise
+        # Apply softmax with temperature
+        return F.softmax(y / self.temperature, dim=-1)

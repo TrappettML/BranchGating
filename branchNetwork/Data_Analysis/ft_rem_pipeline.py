@@ -454,9 +454,9 @@ def file_check(file_path):
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_sl_comparison_plots")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_rule_sl_comparison_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RL_mean_rule/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_TD_rule/RL/'
     count = 0
     for path in [sl_path, rl_path]:
         if path == rl_path:

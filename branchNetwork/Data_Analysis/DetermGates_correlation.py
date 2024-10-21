@@ -422,9 +422,9 @@ def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path)
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_rule_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RL_mean_rule/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_TD_rule/RL/'
     n_branches = [1] # , 2, 7, 14, 28, 49, 98]
     for path in [sl_path]: # , rl_path
         if path == rl_path:

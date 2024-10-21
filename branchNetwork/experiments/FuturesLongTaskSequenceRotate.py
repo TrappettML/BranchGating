@@ -156,7 +156,8 @@ def setup_model(model_name: str,
                 model_dict: Union[None, dict[str, Callable]]):
     
     assert model_name in model_dict.keys(), f'{model_name} not in model_dict'
-    model = torch.compile(model_dict[model_name](model_configs)) # trying torch jit   
+    # model = torch.compile(model_dict[model_name](model_configs)) # trying torch jit
+    model = model_dict[model_name](model_configs) # no jit   
     optim = torch.optim.Adam(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'])
     # optim = AdamSI(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'], c=0.2)
     criterion = model_configs['loss_func']
@@ -348,7 +349,7 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 28, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'sum', 'act_func': nn.ReLU, 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': False, 'lr': 0.0001, 'hidden': [784, 784],
                                       'file_path': './branchNetwork/data/testing_run/', 'file_name': 'text_x', 'l2': 0.0})

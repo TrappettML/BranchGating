@@ -48,7 +48,7 @@ def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs:
             fig.add_traces([
                 # SL, Remembering
                 go.Scatter(
-                    x=sparsity_values, y=sl_data_rem, mode='lines+markers',
+                    x=sparsity_values, y=sl_data_rem, mode='lines',
                     line=dict(color=color_axis1, width=2, dash='solid'),
                     name='', legendgroup='method1', showlegend=False,
                 ),
@@ -56,7 +56,7 @@ def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs:
                 #            fill='toself', fillcolor=color_axis1, hoverinfo='skip', showlegend=False,),
                 # RL, Remembering
                 go.Scatter(
-                    x=sparsity_values, y=rl_data_rem, mode='lines+markers',
+                    x=sparsity_values, y=rl_data_rem, mode='lines',
                     line=dict(color=color_axis1, width=2, dash='dash'),
                     name='', legendgroup='method2', showlegend=False,
                 ),
@@ -64,7 +64,7 @@ def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs:
                 #             fill='toself', fillcolor=color_axis1, hoverinfo='skip', showlegend=False,),
                 # SL, Forward Transfer
                 go.Scatter(
-                    x=sparsity_values, y=sl_data_ft, mode='lines+markers',
+                    x=sparsity_values, y=sl_data_ft, mode='lines',
                     line=dict(color=color_axis2, width=2, dash='solid'),
                     name='', legendgroup='method1', showlegend=False,
                 ),
@@ -72,7 +72,7 @@ def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs:
                 #             fill='toself', fillcolor=color_axis2, hoverinfo='skip', showlegend=False,),
                 # RL, Forward Transfer
                 go.Scatter(
-                    x=sparsity_values, y=rl_data_ft, mode='lines+markers',
+                    x=sparsity_values, y=rl_data_ft, mode='lines',
                     line=dict(color=color_axis2, width=2, dash='dash'),
                     name='', legendgroup='method2', showlegend=False,
                 ),
