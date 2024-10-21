@@ -17,9 +17,7 @@ class RLCrit(CrossEntropyLoss):
         # using the script from simple_pg.py from spinningup at https://github.com/openai/spinningup/blob/master/spinup/examples/pytorch/pg_math/1_simple_pg.py#L44
         # based on policy gradient/Reinforce with baseline using Christian's yŷ defitintion of reward in https://arxiv.org/pdf/2409.03749
         # input_detach = input.clone().detach()
-        input_norm = torch.nn.functional.normalize(input, p=2, dim=-1)
-        input_hat = input_norm + torch.randn_like(input_norm)
-        input_probs = F.softmax(input_hat, dim=1) # Batch x 10 
+        input_probs = self.gumbel_softmax_sample(input)
         # input_predictions = torch.argmax(F.softmax(input_hat, dim=1), dim=-1)
         # y_hat = torch.distributions.Categorical(logits=input).sample() # noisy sample from the output
         # the distribution is over the true outputs, the input_predicitons are the noisy actions/predictions/samples from the distribution
