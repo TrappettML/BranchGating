@@ -23,6 +23,7 @@ import time
 from branchNetwork.architectures.BranchMM import BranchModel
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.Data_Analysis.ft_rem_pipeline import make_plots_folder
+from branchNetwork.architectures.reinforce_criterion import RLCrit
 
 
 
@@ -69,6 +70,7 @@ def rl_filename_parser(filename: str, file_type='state_dict') -> tuple:
     n_npb = int(matches.group(1))
     repeat = int(matches.group(7))
     det_mask = str(matches.group(6))
+    # set_trace()
     return (sparsity, n_branch, det_mask, repeat)
 
 def load_state_models(directory: str, file_parser=parse_filename) -> tuple:
@@ -84,12 +86,12 @@ def load_state_models(directory: str, file_parser=parse_filename) -> tuple:
                 # Construct the full path to the file
                 file_path = os.path.join(root, file)
                 # Parse the filename into a tuple of variables and determine the data type
-                state_dict_key = parse_filename(file, 'state_dict')
+                state_dict_key = file_parser(file, 'state_dict')
                 if state_dict_key:
                     state_dicts[state_dict_key] = file_path   
             elif 'configs' in file:
                 file_path = os.path.join(root, file)
-                config_key = parse_filename(file, 'config')
+                config_key = file_parser(file, 'config')
                 config_paths[config_key] = file_path
     return state_dicts, config_paths
 
@@ -407,6 +409,7 @@ def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path)
     sparsity_values = sorted(set(key[0] for key in state_paths.keys()))
     det_values = sorted(set(key[2] for key in state_paths.keys()))
     determ_similarities = defaultdict(dict)
+    corr_similarities = defaultdict(dict)
     for d in det_values:
         print('Calculating similarities for deterministic:', d)
         for s in sparsity_values:
@@ -415,10 +418,11 @@ def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path)
             for r in repeat_values:
                 determ_similarities[d] |= mean_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
                 # set_trace()
-                # determ_similarities[d] |= corr_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
+                corr_similarities[d] |= corr_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
     # set_trace()
-    plot_all_activations_true_false(determ_similarities['True'], determ_similarities['False'], metric='mean', file_name=f'{parent_path}/mean_similarities_plot_n_b_{n_b}.png')
-    print(f'Plots saved at {parent_path}/mean_similarities_plot_n_b_{n_b}.png')
+    plot_all_activations_true_false(determ_similarities['True'], determ_similarities['False'], metric='mean', file_name=f'{parent_path}mean_similarities_plot_n_b_{n_b}.png')
+    plot_all_activations_true_false(corr_similarities['True'], corr_similarities['False'], metric='mean', file_name=f'{parent_path}corr_similarities_plot_n_b_{n_b}.png')
+    print(f'Plots saved at {parent_path}mean_similarities_plot_n_b_{n_b}.png')
 
 def file_check(file_path):
     if not os.path.exists(file_path):
@@ -427,14 +431,15 @@ def file_check(file_path):
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_rule_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_TD_rule/RL/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel/'
     loop_ray = ray.remote(loops_plot_for_mean_similarity)
     loops = []
-    n_branches = [1] # , 2, 7, 14, 28, 49, 98]
+    n_branches = [1] #, 2, 7, 14, 28, 49, 98]
     # ray.init(num_cpus=10)
-    for path in [rl_path]: # , rl_path
+    for path in [rl_path, sl_path]: # , rl_path
+        # set_trace()
         if path == rl_path:
             parser_name = rl_filename_parser
             folder_name = 'RL_plots'
@@ -442,9 +447,10 @@ def main():
             parser_name = parse_filename 
             folder_name = 'SL_plots'
         state_paths, config_paths = load_state_models(path, parser_name)
+        # set_trace()
         for n_b in n_branches:
             # loops.append(loop_ray.remote(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}/')))
-            loops_plot_for_mean_similarity(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}/'))
+            loops_plot_for_mean_similarity(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}_'))
     # ray.get(loops)
     # ray.shutdown()
 

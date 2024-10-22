@@ -40,9 +40,9 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'/RL/RL_gumbel_rule_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'/RL/RL_gumbel_lr_search_rule_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
-        path = f'/home/mtrappet/branchNetwork/data/Rotate_LongSequence_talapas/{sub_folder}/'
+        path = f'/home/mtrappet/tau/BranchGatingProject/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
         path = f'/home/users/MTrappett/mtrl/BranchGatingProject/data/Rotate_LongSequence/{sub_folder}/'
     param_config = BASE_CONFIG.copy()
@@ -67,6 +67,7 @@ def run_tune(args):
     act_map = {'ReLU': nn.ReLU, 'LeakyReLU': nn.LeakyReLU, 'FReLU': FReLU}
     param_config['act_func'] = act_map[args.act_func]
     param_config['dropout'] = 0.0
+    param_config['lr'] = 0.0001
     
     
     run_continual_learning(param_config)
@@ -86,6 +87,7 @@ if __name__ == "__main__":
     parser.add_argument('--act_func', type=str, default="ReLU", help='Activation function')
     parser.add_argument('--determ_gates', type=int, default="0", help='Deterministic gates')
     parser.add_argument('--learning_rule', type=str, default="sl", help='sl or rl')
+    parser.add_argument('--lr', type=float, default="0.0001", help='Learning rate')
     # Add other parameters as needed
 
     args = parser.parse_args()

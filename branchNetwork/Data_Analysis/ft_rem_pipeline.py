@@ -427,9 +427,9 @@ def training_plots(data_dict_acc, plot_folder):
             c = 0
             for s in sparsity_values:
                 repeat_values = sorted(set(key[3] for key in data_dict_acc.keys() if key[0] == s and key[1] == n and key[2] == d))
-                key = (s, n, d, repeat_values[0])
                 if len(repeat_values) == 0:
                     continue
+                key = (s, n, d, repeat_values[0])
                 prep_data = prep_data_for_plotting(data_dict_acc, key, repeat_values)
                 fig = plot_train_sequence_accuracies(prep_data[0], prep_data[1], prep_data[2], 20, key, save_fig=True)
                 if c == 0:
@@ -454,9 +454,9 @@ def file_check(file_path):
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_rule_sl_comparison_plots/")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_TD_rule/RL/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel/'
     count = 0
     for path in [sl_path, rl_path]:
         if path == rl_path:

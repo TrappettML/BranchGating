@@ -28,7 +28,7 @@ class RLCrit(CrossEntropyLoss):
         if yyhat.shape[0] != self.baseline.shape[0] and self.count > 0:
             pad_size = self.baseline.shape[0] - yyhat.shape[0]
             yyhat= torch.nn.functional.pad(yyhat, (0, pad_size), value=0) # add padding to match baseline
-        td_error = yyhat - self.baseline # TD error
+        td_error = 0.5 * (yyhat - self.baseline) ** 2 # TD error
         yyhat_detached = yyhat.clone().detach()
         self.baseline = (self.baseline * self.count + yyhat_detached) / (self.count + 1) # add padding
         self.baseline.detach()

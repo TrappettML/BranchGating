@@ -90,6 +90,55 @@ def rotate_image(image, angle):
     return rotate(image.numpy(), angle, reshape=False)
 
 
+def load_rotated_flattened_data(dataset_name='MNIST', batch_size=32, rotation_in_degrees=0, download=True, root=DATA_DIR):
+    """
+    Load a dataset (e.g., MNIST, FashionMNIST, KMNIST) with each image rotated and flattened.
+
+    Parameters:
+    - dataset_name: Name of the dataset to load ('MNIST', 'FashionMNIST', 'KMNIST', etc.).
+    - batch_size: The number of samples per batch to load.
+    - rotation_in_degrees: The degree of rotation to apply to each image.
+    - download: Whether to download the dataset if not locally available.
+    - root: Directory where the dataset will be stored.
+
+    Returns:
+    - train_loader: DataLoader for the rotated and flattened training data.
+    - test_loader: DataLoader for the rotated and flattened test data.
+    """
+    
+    # Dataset dictionary to select from
+    dataset_dict = {
+        'MNIST': datasets.MNIST,
+        'FashionMNIST': datasets.FashionMNIST,
+        'KMNIST': datasets.KMNIST
+        # Add more datasets here if needed
+    }
+    
+    if dataset_name not in dataset_dict:
+        raise ValueError(f"Dataset '{dataset_name}' is not supported. Choose from {list(dataset_dict.keys())}.")
+
+    # Get the appropriate dataset class from the dictionary
+    DatasetClass = dataset_dict[dataset_name]
+
+    # Define the transformation: rotate, convert to tensor, normalize, and then flatten
+    transform = transforms.Compose([
+        transforms.RandomRotation(degrees=[rotation_in_degrees, rotation_in_degrees]),  # Apply the specified rotation
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
+        transforms.Lambda(lambda x: torch.flatten(x))  # Flatten the images
+    ])
+
+    # Load the training and test datasets with the specified transforms
+    train_dataset = DatasetClass(root=root, train=True, download=download, transform=transform)
+    test_dataset = DatasetClass(root=root, train=False, download=download, transform=transform)
+
+    # Create data loaders for the training and test sets
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, test_loader
+
+
 def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, download=True, root=DATA_DIR):
     """
     Load the MNIST dataset with each image rotated by a fraction of pi radians and flattened.
