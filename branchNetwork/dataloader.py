@@ -2,9 +2,9 @@
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
-
-
+import random
 import socket
+from ipdb import set_trace
 
 
 if 'talapas' in socket.gethostname():
@@ -42,53 +42,11 @@ def load_mnist_data(batch_size=32, download=True):
 
     return train_loader, test_loader
 
-
-def show_and_save_rotated_mnist_examples(rotation_angles):
-    import matplotlib.pyplot as plt
-    """
-    Load MNIST data, find one example of each digit, show and save the figure,
-    with each row showing the digits rotated by the corresponding angle in rotation_angles.
-    """
-    transform = transforms.Compose([transforms.ToTensor()])
-    train_dataset = datasets.MNIST(root=DATA_DIR, train=True, download=True, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=1000, shuffle=True)
-    
-    # Find one example of each digit
-    digit_images = [None] * 10
-    found_digits = set()
-    for images, labels in train_loader:
-        for i, label in enumerate(labels):
-            if label.item() in found_digits:
-                continue
-            digit_images[label.item()] = images[i].squeeze()  # Remove channel dimension
-            found_digits.add(label.item())
-            if len(found_digits) == 10:
-                break
-        if len(found_digits) == 10:
-            break
-
-    # Plot the images with rotations
-    num_angles = len(rotation_angles)
-    fig, axes = plt.subplots(num_angles, 10, figsize=(15, 1.5 * num_angles))
-    for i, angle in enumerate(rotation_angles):
-        for j, img in enumerate(digit_images):
-            ax = axes[i, j] if num_angles > 1 else axes[j]
-            rotated_img = rotate_image(img, angle)  # Rotate the image
-            ax.imshow(rotated_img, cmap='gray')
-            if i == 0:
-                ax.set_title(str(j))
-            ax.axis('off')
-
-    plt.savefig(f'/home/users/MTrappett/mtrl/BranchGatingProject/data/rotated_mnist_examples.png')
-    plt.show()
-
-def rotate_image(image, angle):
-    """
-    Rotate an image (2D numpy array) by a given angle.
-    """
-    from scipy.ndimage import rotate
-    return rotate(image.numpy(), angle, reshape=False)
-
+def load_emnist():
+    split = 'mnist'
+    def get_emnist(root, train, download, transform, split=split):
+        return datasets.EMNIST(root=root, split=split, download=download, transform=transform, train=train)
+    return get_emnist
 
 def load_rotated_flattened_data(dataset_name='MNIST', batch_size=32, rotation_in_degrees=0, download=True, root=DATA_DIR):
     """
@@ -110,7 +68,8 @@ def load_rotated_flattened_data(dataset_name='MNIST', batch_size=32, rotation_in
     dataset_dict = {
         'MNIST': datasets.MNIST,
         'FashionMNIST': datasets.FashionMNIST,
-        'KMNIST': datasets.KMNIST
+        'KMNIST': datasets.KMNIST,
+        'EMNIST': load_emnist(),
         # Add more datasets here if needed
     }
     
@@ -174,15 +133,43 @@ def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, down
 
     return train_loader, test_loader
 
-
-def load_permuted_flattened_mnist_data(batch_size=32, permute_seed=42, download=True, root=DATA_DIR):
-    import numpy as np
+def generate_permutation_indices(image_size, permutation_percent):
     """
-    Load the MNIST dataset with each image's pixels permuted according to a given seed and flattened.
+    Generate a permutation index array for an image of size `image_size x image_size` 
+    with the specified `permutation_percent` of pixels swapped.
+    
+    Parameters:
+    - image_size: Size of one side of the image (e.g., 28 for a 28x28 image)
+    - permutation_percent: Percentage of pixels to permute.
+    
+    Returns:
+    - permuted_indices: A 1D array of permuted indices that can be applied to any image.
+    """
+    num_pixels = image_size * image_size
+    indices = list(range(num_pixels))
+
+    # Calculate the number of pixels to swap
+    num_swaps = int((permutation_percent / 100.0) * (num_pixels // 2))
+
+    # Randomly shuffle indices
+    shuffled_indices = indices.copy()
+    random.shuffle(shuffled_indices)
+
+    # Swap the pixels according to the calculated number of swaps
+    for i in range(num_swaps):
+        idx1, idx2 = shuffled_indices[2 * i], shuffled_indices[2 * i + 1]
+        indices[idx1], indices[idx2] = indices[idx2], indices[idx1]
+    
+    return indices
+
+
+def load_permuted_flattened_mnist_data(batch_size=32, permutation_percent=0, download=True, root=DATA_DIR):
+    """
+    Load the MNIST dataset with each image having a percentage of its pixels permuted and flattened.
 
     Parameters:
     - batch_size: The number of samples per batch to load.
-    - permute_seed: Seed used to generate a consistent permutation of the pixels.
+    - permutation_percent: The percentage of pixels to permute, from 0% (no permutation) to 100% (maximum permutation).
     - download: Whether to download the dataset if not locally available.
     - root: Directory where the dataset will be stored.
 
@@ -191,26 +178,16 @@ def load_permuted_flattened_mnist_data(batch_size=32, permute_seed=42, download=
     - test_loader: DataLoader for the permuted and flattened test data.
     """
 
-    # Define transformation pipeline
-    if permute_seed != 0:
-        # Set the random seed for reproducibility of the permutation
-        np.random.seed(permute_seed)
-        idx = torch.from_numpy(np.random.permutation(28 * 28))  # Create a permutation of the 784 pixel indices
+    # Define the transformation: convert to tensor, permute pixels, normalize, and then flatten
+    new_indices = generate_permutation_indices(28, permutation_percent)
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
+        transforms.Lambda(lambda x: torch.flatten(x)),
+        transforms.Lambda(lambda x: x[new_indices]),  # Apply pixel permutation
         
-        # Define the transformation with permutation
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.view(-1)[idx].view(1, 28, 28)),  # Permute the pixels
-            transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
-            transforms.Lambda(lambda x: torch.flatten(x))  # Flatten the images
-        ])
-    else:
-        # Define the transformation without permutation
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,)),  # Normalize the images
-            transforms.Lambda(lambda x: torch.flatten(x))  # Flatten the images
-        ])
+    ])
 
     # Load the training and test datasets with the specified transforms
     train_dataset = datasets.MNIST(root=root, train=True, download=download, transform=transform)
@@ -221,95 +198,105 @@ def load_permuted_flattened_mnist_data(batch_size=32, permute_seed=42, download=
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, test_loader
+    
 
-
-def plot_permuted_mnist_by_seeds(seeds, root=DATA_DIR, save_path='permuted_mnist.png'):
+def show_and_save_permuted_mnist_examples(permutation_percents):
     import matplotlib.pyplot as plt
-    import numpy as np
-    # Define a basic transform to convert image data to tensor
-    transform = transforms.Compose([transforms.ToTensor()])
 
-    # Load the MNIST dataset
-    dataset = datasets.MNIST(root=root, train=True, download=True, transform=transform)
+    """
+    Load MNIST data, find one example of each digit, show and save the figure,
+    with each row showing the digits permuted by the corresponding percentage in permutation_percents.
+    """
+    # Find one example of each digit
+    def find_example_images(data_loader):
+        digit_images = [None] * 10
+        found_digits = set()
+        for images, labels in data_loader:
+            for i, label in enumerate(labels):
+                if label.item() in found_digits:
+                    continue
+                digit_images[label.item()] = images[i].view(28, 28).cpu().numpy()  # Reshape to 28x28 and store as numpy
+                found_digits.add(label.item())
+                if len(found_digits) == 10:
+                    break
+            if len(found_digits) == 10:
+                break
+        return digit_images
 
-    # Prepare a figure to hold the subplots
-    fig, axes = plt.subplots(nrows=len(seeds), ncols=10, figsize=(15, 1.5 * len(seeds)))
-    if len(seeds) == 1:
-        axes = np.expand_dims(axes, 0)  # Handle the case of a single row
+    # Plot the images with pixel permutations
+    num_permutations = len(permutation_percents)
+    fig, axes = plt.subplots(num_permutations, 10, figsize=(15, 1.5 * num_permutations))
+    
+    for i, percent in enumerate(permutation_percents):
+        # Load the dataset with the current permutation percent
+        train_loader, _ = load_permuted_flattened_mnist_data(batch_size=1000, permutation_percent=percent, root=DATA_DIR)
 
-    # Collect one example of each digit
-    examples = {i: None for i in range(10)}
-    for image, label in dataset:
-        if examples[label] is None:
-            examples[label] = image
-        if all(ex is not None for ex in examples.values()):
-            break
+        # Get one example of each digit after permutation
+        digit_images = find_example_images(train_loader)
 
-    # Plot each permuted set of images
-    for row_idx, seed in enumerate(seeds):
-        if seed is not None:
-            np.random.seed(seed)
-            idx = np.random.permutation(28 * 28)
-        else:
-            idx = np.arange(28 * 28)
-
-        for digit, image in examples.items():
-            if seed is not None:
-                # Permute the image pixels based on the seed
-                permuted_image = image.view(-1)[torch.tensor(idx)].view(1, 28, 28)
-            else:
-                permuted_image = image
-
-            ax = axes[row_idx, digit]
-            ax.imshow(permuted_image.numpy().squeeze(), cmap='gray')
-            ax.set_title(f"Seed {seed} - Digit {digit}")
+        # Plot the permuted images
+        for j, img in enumerate(digit_images):
+            ax = axes[i, j] if num_permutations > 1 else axes[j]
+            ax.imshow(img, cmap='gray')
+            if i == 0:
+                ax.set_title(str(j))
             ax.axis('off')
 
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
+    plt.savefig(f'./permuted_mnist_examples_via_loader.png')
 
-def main():
-    # show_and_save_rotated_mnist_examples([0, 120, 180, 240])
-    # print('Data saved')
-    seeds = [None, 42, 123, 456]
-    plot_permuted_mnist_by_seeds(seeds)
-    print('Data saved')
+
+def show_and_save_rotated_mnist_examples(dataset='MNIST'):
+    import matplotlib.pyplot as plt
+
+    """
+    Load MNIST data, find one example of each digit, show and save the figure,
+    with each row showing the digits permuted by the corresponding percentage in permutation_percents.
+    """
+    # Find one example of each digit
+    def find_example_images(data_loader):
+        digit_images = [None] * 10
+        found_digits = set()
+        for images, labels in data_loader:
+            for i, label in enumerate(labels):
+                if label.item() in found_digits:
+                    continue
+                digit_images[label.item()] = images[i].view(28, 28).cpu().numpy()  # Reshape to 28x28 and store as numpy
+                found_digits.add(label.item())
+                if len(found_digits) == 10:
+                    break
+            if len(found_digits) == 10:
+                break
+        return digit_images
+
+    # Plot the images with pixel permutations
+    rotations = list(range(0, 360, 36))
+    fig, axes = plt.subplots(len(rotations), 10, figsize=(15, 1.5 * len(rotations)))
     
-def test_load_rotated_flattened_mnist():
-    train_loader, test_loader = load_rotated_flattened_mnist_data(batch_size=128, rotation_in_degrees=120)
-    print(f'Length of train_loader: {len(train_loader)}')
-    print(f'Length of test_loader: {len(test_loader)}')
-    for data, target in train_loader:
-        print(data.shape)
-        print(target.shape)
-        break
+    for i, rotation in enumerate(rotations):
+        # Load the dataset with the current permutation percent
+        train_loader, _ = load_rotated_flattened_data(dataset, rotation_in_degrees=rotation, root=DATA_DIR)
 
-    for data, target in test_loader:
-        print(data.shape)
-        print(target.shape)
-        break
+        # Get one example of each digit after permutation
+        digit_images = find_example_images(train_loader)
 
-    print('Data loaded successfully')
+        # Plot the permuted images
+        for j, img in enumerate(digit_images):
+            ax = axes[i, j] if len(rotations) > 1 else axes[j]
+            ax.imshow(img, cmap='gray')
+            if i == 0:
+                ax.set_title(str(j))
+            # ax.axis('off')
+            axes[i,j].tick_params(axis='both', which='both',length=0)
+            plt.setp(axes[i,j].get_xticklabels(), visible=False)
+            plt.setp(axes[i,j].get_yticklabels(), visible=False)
+        # Add the rotation label on the left side of each row
+        axes[i, 0].set_ylabel(f'{rotation}°')
+        
+        # set_trace()
+        
+    plt.savefig(f'./rotated_{dataset}_examples_via_loader.png')
 
-def test_load_permuted_flattened_mnist():
-    train_loader, test_loader = load_permuted_flattened_mnist_data(batch_size=128, permute_seed=42)
-    print(f'Length of train_loader: {len(train_loader)}')
-    print(f'Length of test_loader: {len(test_loader)}')
-    for data, target in train_loader:
-        print(data.shape)
-        print(target.shape)
-        break
 
-    for data, target in test_loader:
-        print(data.shape)
-        print(target.shape)
-        break
-
-    print('Data loaded successfully')
-    
-    
 if __name__=='__main__':
-    # test_load_rotated_flattened_mnist()
-    test_load_permuted_flattened_mnist()
-    main()
+    # show_and_save_permuted_mnist_examples([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+    show_and_save_rotated_mnist_examples('EMNIST')

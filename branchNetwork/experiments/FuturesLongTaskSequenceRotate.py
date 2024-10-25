@@ -5,7 +5,7 @@ from branchNetwork.architectures.Expert import ExpertModel
 from branchNetwork.architectures.Masse import MasseModel
 from branchNetwork.architectures.Simple import SimpleModel
 # from branchNetwork.architectures.SparseGradientANN import SparseGradientANN, AdamSI
-# from branchNetwork.dataloader import load_permuted_flattened_mnist_data
+from branchNetwork.dataloader import load_permuted_flattened_mnist_data
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.utils.timing import timing_decorator
 from branchNetwork.architectures.reinforce_criterion import RLCrit
@@ -283,6 +283,9 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     MODEL = configs['model_name']
     MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel ]
     MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    EXPERIMENT_NAMES = ['Rotated_MNIST', 'Permuted_MNIST']
+    EXPERIMENT_MAP = {'Rotated_MNIST': load_rotated_flattened_mnist_data, 'Permuted_MNIST': load_permuted_flattened_mnist_data}
+
     loss_map = {'sl': nn.CrossEntropyLoss(), 'rl': RLCrit()}
     MODEL_DICT = {name: model for name, model in zip(MODEL_NAMES, MODEL_CLASSES)}
     TRAIN_CONFIGS = {'batch_size': batch_size,

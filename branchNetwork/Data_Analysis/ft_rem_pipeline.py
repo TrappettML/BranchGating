@@ -17,6 +17,7 @@ from branchNetwork.Data_Analysis.Analysis_pipeline import plot_comparison_scatte
 
 
 # new metrics for FT and Remembering
+LR = '1e05'
 
 def ft_rem_metric(auc_values, train_order):
     # remembing is the mean of the area under the curve for all tasks 
@@ -72,8 +73,10 @@ def parse_filename_accuracies(filename, matching_pattern=False):
     return (sparsity, n_branch, det_mask, repeat)
         
 def rl_filename_parser(filename):
-    pattern = r"si_all_task_accuracies_soma_func_sum_lr_0.0001_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20.pkl"
+    pattern = rf"si_all_task_accuracies_soma_func_sum_lr_{LR}_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20.pkl"
     matches = re.search(pattern, filename)
+    if not matches:
+        return None
     sparsity = float(matches.group(5))
     n_branch = int(matches.group(3))
     n_npb = int(matches.group(1))
@@ -139,6 +142,7 @@ def aggregate_experiment_runs(data: dict, train_order: list) -> dict:
 
 
 def make_2d_matrix(data_dict: dict) -> tuple:
+    # set_trace()
     # Extract unique sorted lists of sparsity and number of branches
     n_branch_values = sorted(set(key[1] for key in data_dict.keys()))
     sparsity_values = sorted(set(key[0] for key in data_dict.keys()))
@@ -153,6 +157,8 @@ def make_2d_matrix(data_dict: dict) -> tuple:
         # Populate the matrices
         for (sparsity, n_branch, det_mask, repeat, _metric), stats in data_dict.items():
             # if repeat == 5:
+            if det_mask != b:
+                continue
             i = sparsity_values.index(sparsity)
             j = n_branch_values.index(n_branch)
             k = repeat_values.index(repeat)
@@ -231,12 +237,12 @@ def expand_heatmap_dicts(heatmap_dict: dict, n_branch_values) -> dict:
     return expanded_dict
 
     
-def make_comparison_plots(sl_heatmap_dict: dict, rl_heatmap_dict: dict, sparsity_values: list, n_branch_values: list)-> go.Figure:
+def make_comparison_plots(sl_heatmap_dict: dict, rl_heatmap_dict: dict, sparsity_values: list, n_branch_values: list, rl_branch_values: list)-> go.Figure:
     """heatmap: dict where keys=determ_gating_bool, values={'ft': matrix, 'rem': matrix, 'rem_med': matrix, 'ft_med': matrix})
         sparsity is 0 index, n_branch is 1 index.     
     """
     sl_expanded = expand_heatmap_dicts(sl_heatmap_dict, n_branch_values)
-    rl_expanded = expand_heatmap_dicts(rl_heatmap_dict, n_branch_values)
+    rl_expanded = expand_heatmap_dicts(rl_heatmap_dict, rl_branch_values)
     # set_trace()
     comp_fig = plot_comparison_scatter_matrix(sl_expanded, rl_expanded, n_branch_values, sparsity_values, error_metric='std')
     return comp_fig
@@ -249,11 +255,12 @@ def write_fig(fig: go.Figure, filename: str):
 def comp_fig_pipeline(sl_path: str, rl_path: str, save_path: str):
     sl_auc_dict, sl_train_order = path_to_auc(sl_path)
     rl_auc_dict, rl_train_order = path_to_auc(rl_path, parser=rl_filename_parser)
+    # set_trace()
     sl_aggregated_data = aggregate_experiment_runs(sl_auc_dict, sl_train_order)
     rl_aggregated_data = aggregate_experiment_runs(rl_auc_dict, rl_train_order)
     sl_heat_map_data, sparsity_values, n_branch_values = make_2d_matrix(sl_aggregated_data)
-    rl_heat_map_data, _, _ = make_2d_matrix(rl_aggregated_data)
-    comp_fig = make_comparison_plots(sl_heat_map_data, rl_heat_map_data, sparsity_values, n_branch_values)
+    rl_heat_map_data, _, rl_branch_values = make_2d_matrix(rl_aggregated_data)
+    comp_fig = make_comparison_plots(sl_heat_map_data, rl_heat_map_data, sparsity_values, n_branch_values, rl_branch_values)
     write_fig(comp_fig, f'{save_path}/comparison_rl_sl_fig.html')
 
 
@@ -454,9 +461,9 @@ def file_check(file_path):
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_{LR}_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel_lr_search/'
     count = 0
     for path in [sl_path, rl_path]:
         if path == rl_path:
@@ -481,6 +488,7 @@ def main():
     print('finished heatmap figs')
     print('finished training plots')
     comp_fig_pipeline(sl_path, rl_path, results_path)
+    print(f'finisihed comparison figs')
        
        
 if __name__ == '__main__':

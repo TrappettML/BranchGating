@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 from ipdb import set_trace
 
 
-def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs: list, sparsity_values: list, error_metric: str='sem'):
+def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs: list, sparsity_values: list, error_metric: str='std'):
     """ Dummy Data:
     # Creating dummy data
         sparsity_values = np.linspace(0, 1, 10) # sparsity values, will be categorical.
@@ -35,6 +35,7 @@ def plot_comparison_scatter_matrix(sl_data_dict: dict, rl_data_dict: dict, n_bs:
             row = i + 1
             col = j + 1
             # Generate data and error bounds
+            # set_trace()
             sl_data_rem = sl_data_dict[gate_bool][n_b]['rem']
             sl_error_rem = sl_data_dict[gate_bool][n_b][f'rem_{error_metric}']
             sl_data_ft = sl_data_dict[gate_bool][n_b]['ft']
