@@ -18,10 +18,10 @@ for model in "${model_names[@]}"; do
     for repeat in "${repeats[@]}"; do
         for branch_num in "${branch_nums[@]}"; do
             for soma_func in "${soma_funcs[@]}"; do
-                for lr in "${learning_rates[@]}"; do
-                    for sparsity in "${sparsities[@]}"; do
-                        for lrule in "${lrules[@]}"; do
-                            for det_gate in "${det_gates[@]}"; do
+                for sparsity in "${sparsities[@]}"; do
+                    for lrule in "${lrules[@]}"; do
+                        for det_gate in "${det_gates[@]}"; do
+                            for lr in "${learning_rates[@]}"; do
                                 echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --lr $lr --learning_rule ${lrule} --determ_gates $det_gate"
                             done
                         done

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=RLGumRuleLRsearch
-#SBATCH --output=RLGumruleLRsearch/%x-%A-%a.out
-#SBATCH --error=RLGumruleLRsearch/%x-%A-%a.err
+#SBATCH --job-name=RL3Rsearch
+#SBATCH --output=RL3Rsearch/%x-%A-%a.out
+#SBATCH --error=RL3Rsearch/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
