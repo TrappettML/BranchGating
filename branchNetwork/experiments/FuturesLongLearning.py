@@ -76,7 +76,7 @@ def run_tune(args):
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Run a set of experiments with varying parameters")
-    parser.add_argument('--model_name', type=str, default="BranchModel", help='Model name')
+    parser.add_argument('--model_name', type=str, default="Branch", help='Model name')
     parser.add_argument('--n_branches', type=int, default="1", help='Branch number index')
     parser.add_argument('--soma_func', type=str, default="sum", help='Type of soma function')
     parser.add_argument('--sparsity', type=float, default="0.0", help='Sparsity level')
