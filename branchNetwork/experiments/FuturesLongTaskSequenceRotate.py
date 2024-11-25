@@ -282,7 +282,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
     batch_size = configs.get('batch_size', 32)
     MODEL = configs['model_name']
     MODEL_CLASSES = [BranchModel, ExpertModel, MasseModel, SimpleModel ]
-    MODEL_NAMES = ['BranchModel', 'ExpertModel', 'MasseModel', 'SimpleModel']
+    MODEL_NAMES = ['Branch', 'Expert', 'Masse', 'Simple']
     EXPERIMENT_NAMES = ['Rotated_MNIST', 'Permuted_MNIST']
     EXPERIMENT_MAP = {'Rotated_MNIST': load_rotated_flattened_mnist_data, 'Permuted_MNIST': load_permuted_flattened_mnist_data}
 
@@ -353,7 +353,7 @@ if __name__=='__main__':
     print(f'Using {device} device.')
     angle_increments = 90
     time_start = time.time()
-    results = run_continual_learning({'model_name': 'BranchModel', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
+    results = run_continual_learning({'model_name': 'Branch', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
                                       'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'sum', 'act_func': nn.ReLU, 'device': device, 'n_repeat': 0, 
                                       'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
                                       'file_path': './branchNetwork/data/testing_run/', 'file_name': 'test_x', 'l2': 0.0})

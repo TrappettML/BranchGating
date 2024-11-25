@@ -3,7 +3,7 @@
 
 model_names=('BranchModel')
 branch_nums=(1 2 7 14 28 49)
-learning_rates=(0.1 0.01 0.001 0.0001 0.00001)
+# learning_rates=(0.1 0.01 0.001 0.0001 0.00001)
 # branch_nums=(1 2 5 10 20 50 100 200 400 800 1200)
 # soma_funcs=('tanh' 'sigmoid' 'softplus' 'softsign' 'elu' 'gelu' 'selu')
 soma_funcs=('sum')
@@ -21,9 +21,7 @@ for model in "${model_names[@]}"; do
                 for sparsity in "${sparsities[@]}"; do
                     for lrule in "${lrules[@]}"; do
                         for det_gate in "${det_gates[@]}"; do
-                            for lr in "${learning_rates[@]}"; do
-                                echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --lr $lr --learning_rule ${lrule} --determ_gates $det_gate"
-                            done
+                            echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --learning_rule ${lrule} --determ_gates $det_gate"
                         done
                     done
                 done

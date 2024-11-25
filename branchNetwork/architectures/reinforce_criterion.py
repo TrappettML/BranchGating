@@ -4,6 +4,11 @@ from torch.nn import functional as F
 from torch.nn.modules import CrossEntropyLoss
 from ipdb import set_trace
 
+def sample_gumbel(shape, eps=1e-10):
+    U = torch.rand(shape)
+    U = torch.clamp(U, min=eps, max=1.0 - eps)  # Avoid log(0)
+    return -torch.log(-torch.log(U))
+
 
 class RLCrit(CrossEntropyLoss):
     def __init__(self, ignore_index=-100):
@@ -12,22 +17,29 @@ class RLCrit(CrossEntropyLoss):
         self.baseline = torch.tensor([0]).requires_grad_(False).detach()
         self.count = 0
         self.temperature = 1.0
+        self.loss = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, pred_logits, y_true):
         ''''pred_logits is the output of the model (batch x categories), 
             y_true: is the true labels (batch x 1)'''
-        # try this since the next two lines methods didn't work: https://gist.github.com/EderSantana/1ad56b7720af8d706e7f22cbcb8c6d70
-        act_probs = F.softmax(pred_logits, dim=1)
-        y_pred = torch.argmax(act_probs, dim=-1)
         # using the script from simple_pg.py from spinningup at https://github.com/openai/spinningup/blob/master/spinup/examples/pytorch/pg_math/1_simple_pg.py#L44
         # based on policy gradient/Reinforce with baseline using Christian's yŷ defitintion of reward in https://arxiv.org/pdf/2409.03749
         # y_pred_detach = y_pred.clone().detach()
         # pred_probs = self.gumbel_softmax_sample(pred_logits)
+        ########## this finally worked ############
+        # try this since the next two lines methods didn't work: https://gist.github.com/EderSantana/1ad56b7720af8d706e7f22cbcb8c6d70
+        gumbel_noise = sample_gumbel(pred_logits.shape)
+        noised_logits = pred_logits + gumbel_noise
+        # act_probs = F.softmax(pred_logits, dim=1)
+        act_probs = F.softmax(noised_logits, dim=1)
+        # y_pred = torch.argmax(act_probs, dim=-1)
         logs = torch.log(torch.max(act_probs, dim=1)[0])
-        r = torch.eq(y_pred, y_true).float()
+        # r = torch.eq(y_pred, y_true).float()
+        r = -self.loss(pred_logits, y_true).float()
         baseline = torch.mean(r)
         adv = r - baseline
         loss = -1 * torch.mean(logs * adv)
+        ###########################################
         # y_pred_predictions = torch.argmax(F.softmax(y_pred_hat, dim=1), dim=-1)
         # y_hat = torch.distributions.Categorical(logits=y_pred).sample() # noisy sample from the output
         # the distribution is over the true outputs, the y_pred_predicitons are the noisy actions/predictions/samples from the distribution
@@ -48,10 +60,4 @@ class RLCrit(CrossEntropyLoss):
         # set_trace()
         return loss
 
-    def gumbel_softmax_sample(self, logits):
-        # Generate Gumbel noise
-        gumbel_noise = -torch.empty_like(logits).exponential_().log()
-        # Add Gumbel noise to the logits
-        y = logits + gumbel_noise
-        # Apply softmax with temperature
-        return F.softmax(y / self.temperature, dim=-1)
+

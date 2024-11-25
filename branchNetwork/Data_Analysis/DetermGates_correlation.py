@@ -10,6 +10,11 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import viridis
 from matplotlib.colors import Normalize
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from ipdb import set_trace
+from joblib import Parallel, delayed
+
 import pickle
 import os
 import re
@@ -24,7 +29,7 @@ from branchNetwork.architectures.BranchMM import BranchModel
 from branchNetwork.dataloader import load_rotated_flattened_mnist_data
 from branchNetwork.Data_Analysis.ft_rem_pipeline import make_plots_folder
 from branchNetwork.architectures.reinforce_criterion import RLCrit
-
+from branchNetwork.Data_Analysis.RepSimPlot import plot_all_similarity
 
 
 os.environ['OMP_NUM_THREADS'] = '2'
@@ -65,6 +70,8 @@ def rl_filename_parser(filename: str, file_type='state_dict') -> tuple:
     elif file_type == 'config':
         pattern = config_pattern
     matches = re.search(pattern, filename)
+    if not matches:
+        return None
     sparsity = float(matches.group(5))
     n_branch = int(matches.group(3))
     n_npb = int(matches.group(1))
@@ -96,6 +103,7 @@ def load_state_models(directory: str, file_parser=parse_filename) -> tuple:
     return state_dicts, config_paths
 
 def get_model(config_file: str, state_file: str) -> tuple:
+    from branchNetwork.architectures.reinforce_criterion import RLCrit
     with open(config_file, 'rb') as f:
         config = pickle.load(f)
     configs = 'dict(' + config + ')'
@@ -103,7 +111,13 @@ def get_model(config_file: str, state_file: str) -> tuple:
     for key, value in {'n_out':10, 'n_in':784, 'n_contexts':len(configs['TRAIN_CONFIGS']['rotation_degrees']), 'device':'cpu', 'dropout':0}.items():
         configs['MODEL_CONFIGS'][key] = value
     model = BranchModel(configs['MODEL_CONFIGS'])
-    model.load_state_dict(torch.load(state_file, weights_only=False))
+    # set_trace()
+    checkpoint = torch.load(state_file, weights_only=False)
+    for key in list(checkpoint.keys()):
+        if '_orig_mod.' in key:
+            new_key = key.replace('_orig_mod.', '')
+            checkpoint[new_key] = checkpoint.pop(key)
+    model.load_state_dict(checkpoint)
     model.eval()
     rotations = configs['TRAIN_CONFIGS']['rotation_degrees']
     return model, rotations
@@ -113,7 +127,7 @@ def get_activations(model, test_loader, rotation, labels=[5], rep_len=200):
     activations = defaultdict(lambda: defaultdict(list))
     layer_names = ['b1', 'b2','s1', 's2', 'h1', 'h2']  # Adjust as per your model
     label_count = 0
-    # rep_len = 20
+    # rep_len = 1
     # print(f'_______________{label_counts=}__________________')
     with torch.no_grad():
         for i, (x, y) in enumerate(test_loader):
@@ -336,93 +350,34 @@ def full_similarity_pipeline(n_branches, state_paths, config_paths, sparsities, 
     all_similarities = [corr_similarity_pipeline(key, state_paths, config_paths) for key in tqdm(target_keys, desc=f'branches: {n_branches}')]
     all_similarities_dict = {k:v for d in all_similarities for k,v in d.items()}
     plot_all_activations(all_similarities_dict, f'branchNetwork/Data_Analysis/activations_plot_n_b_{n_branches}.png')
+
     
-
-def plot_all_activations_true_false(data_dict1, data_dict2, metric='mean', data_dict_labels=['Determ True', 'Determ False'], file_name='activations_plot.png'):
-    # Extract continuous values and use them for the color map
-    # continuous_values = sorted(data_dict1.keys())
-    norm = Normalize(vmin=0, vmax=1)
-    sm = plt.cm.ScalarMappable(cmap=viridis, norm=norm)
-
-    # Define the subplot grid and figure size
-    fig, axs = plt.subplots(6, 2, figsize=(15, 17), sharey=True, layout='constrained')
-    layer_names = ['b1','s1', 'h1', 'b2', 's2', 'h2']  # Order of layers to plot
-
-    # Loop through each layer and plot in the designated subplot
-    for col, data_dict in enumerate([data_dict1, data_dict2]):
-        for i, layer in enumerate(layer_names):
-            ax = axs[i, col]
-            seen_combinations = set()
-            
-            continuous_values = sorted(data_dict.keys())
-            for key in continuous_values:
-                sparsity, n_b, det_bool, repeat = key
-                if (sparsity, n_b, det_bool) not in seen_combinations:
-                    seen_combinations.add((sparsity, n_b, det_bool))
-                    all_repeats = []
-                    all_repeats = []
-                    # Collect data across all repeats for this combination
-                    for repeat_key in [k for k in data_dict.keys() if k[:3] == (sparsity, n_b, det_bool)]:
-                        layer_data = data_dict[repeat_key]
-                        layer_specific_data = {k: v for k, v in layer_data.items() if k[1] == layer}
-                        angles = [int(k[0]) for k in layer_specific_data.keys()]
-                        values = np.array([v.item() for v in layer_specific_data.values()])
-                        sorted_indices = np.argsort(angles)
-                        angles = np.array(angles)[sorted_indices]
-                        values = np.array(values)[sorted_indices]
-                        all_repeats.append(values)
-
-                        
-                if metric == 'mean':
-                    plot_values = np.mean(all_repeats, axis=0)
-                    error_bars = sem(all_repeats, axis=0)
-                elif metric == 'median':
-                    plot_values = median(all_repeats, axis=0)
-                    error_bars = iqr(all_repeats, axis=0)
-                    
-                # ax.plot(angles, )
-                # Plotting
-                # print(f'{_r[0]}')
-                color = sm.to_rgba(norm(sparsity))
-                # ax.plot(angles, plot_values, marker='o', linestyle='-', color=color)
-                # print(f'{error_bars}')
-                ax.errorbar(angles, plot_values, yerr=error_bars, fmt='o-', color=color
-                            , label=f'{data_dict_labels[col]}')
-              
-                ax.set_ylabel(f'Layer: {layer}')
-            ax.set_title(f'Gating type: {data_dict_labels[col]}', fontsize='small', loc='left')
-            ax.grid(True)
-            ax.set_xticks(angles)  # Ensure x-ticks show actual angles
-
-    # Create color bar in the space made by fig.subplots_adjust
-    cbar_ax = fig.add_axes([1.02, 0.25, 0.01, 0.5]) # [left, bottom, width, height]
-    cbar = fig.colorbar(sm, cax=cbar_ax)
-    cbar.set_label('Sparsity')
-    fig.supylabel('Cosine Similarity Score', fontsize=20)
-    fig.supxlabel('Rotation Angle', fontsize=20)
-    # Adjust layout and add a supertitle
-    fig.suptitle(f'Similarity of 0° compared to other Rotations with n_b:{key[1]}', fontsize=16, y=1.01)
-    # plt.tight_layout()
-    plt.savefig(file_name, bbox_inches='tight')
-    
-def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, parent_path):
+def loops_plot_for_mean_similarity(state_paths, configs_paths, n_b, folder_name):
     sparsity_values = sorted(set(key[0] for key in state_paths.keys()))
     det_values = sorted(set(key[2] for key in state_paths.keys()))
-    determ_similarities = defaultdict(dict)
+    mean_similarities = defaultdict(dict)
     corr_similarities = defaultdict(dict)
     for d in det_values:
         print('Calculating similarities for deterministic:', d)
         for s in sparsity_values:
+            # if s > 0.2:
+            #     continue
             print('Calculating similarities for sparsity:', s)
             repeat_values = sorted(set(key[3] for key in state_paths.keys() if key[0] == s and key[2] == d and n_b == key[1]))
-            for r in repeat_values:
-                determ_similarities[d] |= mean_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
-                # set_trace()
-                corr_similarities[d] |= corr_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
-    # set_trace()
-    plot_all_activations_true_false(determ_similarities['True'], determ_similarities['False'], metric='mean', file_name=f'{parent_path}mean_similarities_plot_n_b_{n_b}.png')
-    plot_all_activations_true_false(corr_similarities['True'], corr_similarities['False'], metric='mean', file_name=f'{parent_path}corr_similarities_plot_n_b_{n_b}.png')
-    print(f'Plots saved at {parent_path}mean_similarities_plot_n_b_{n_b}.png')
+            vals = [((s, n_b, d, r), state_paths, configs_paths) for r in repeat_values]
+            mean_results = list(Parallel(n_jobs=len(repeat_values))(delayed(mean_similarity_pipeline)(*val) for val in vals))
+            corr_results = list(Parallel(n_jobs=len(repeat_values))(delayed(corr_similarity_pipeline)(*val) for val in vals))
+            for i, r in enumerate(repeat_values):
+                mean_similarities[d] |= mean_results[i].items()
+                corr_similarities[d] |= corr_results[i].items()
+            # for r in repeat_values:
+            #     # if r > 3:
+            #     #     continue
+            #     mean_similarities[d] |= mean_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
+            #     # set_trace()
+            #     corr_similarities[d] |= corr_similarity_pipeline((s, n_b, d, r), state_paths, configs_paths).items()
+        
+    return mean_similarities, corr_similarities
 
 def file_check(file_path):
     if not os.path.exists(file_path):
@@ -431,12 +386,13 @@ def file_check(file_path):
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/all2_branches_rl_v_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel/'
+    # rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_3/'
     loop_ray = ray.remote(loops_plot_for_mean_similarity)
-    loops = []
-    n_branches = [1] #, 2, 7, 14, 28, 49, 98]
+    all_mean_sims, all_corr_sims = defaultdict(dict), defaultdict(dict)
+    n_branches = [1, 2, 7, 14, 28, 49]
     # ray.init(num_cpus=10)
     for path in [rl_path, sl_path]: # , rl_path
         # set_trace()
@@ -448,11 +404,27 @@ def main():
             folder_name = 'SL_plots'
         state_paths, config_paths = load_state_models(path, parser_name)
         # set_trace()
+        # loops.append(loop_ray.remote(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}/')))
         for n_b in n_branches:
-            # loops.append(loop_ray.remote(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}/')))
-            loops_plot_for_mean_similarity(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}_'))
+            mean_sims, corr_sims = loops_plot_for_mean_similarity(state_paths, config_paths, n_b, file_check(f'{results_path}/{folder_name}_'))
+            all_mean_sims[n_b][folder_name] = mean_sims
+            all_corr_sims[n_b][folder_name] = corr_sims
+    # Make plots with combined data
+        # set_trace()
+    sparsities = [a/10 for a in range(10)]
+    for n_b in n_branches:
+        for sp in sparsities:
+            # plot_all_activations_true_false(all_mean_sims[n_b], n_b, metric='mean', file_name=f'{results_path}/mean_similarities_plot_n_b_{n_b}')
+            # plot_all_activations_true_false(all_corr_sims[n_b], n_b, metric='mean', file_name=f'{results_path}/corr_similarities_plot_n_b_{n_b}')
+            plot_all_similarity(all_mean_sims[n_b], sp, n_b, 'mean', f'{results_path}/mean_similarities_plot_n_b_{n_b}')
+            plot_all_similarity(all_corr_sims[n_b], sp, n_b, 'mean', f'{results_path}/corr_similarities_plot_n_b_{n_b}')
+
+    # plot_all_activations_true_false(determ_similarities['True'], determ_similarities['False'], metric='mean', file_name=f'{parent_path}mean_similarities_plot_n_b_{n_b}.png')
+    # plot_all_activations_true_false(corr_similarities['True'], corr_similarities['False'], metric='mean', file_name=f'{parent_path}corr_similarities_plot_n_b_{n_b}.png')
+    # print(f'Plots saved at {parent_path}mean_similarities_plot_n_b_{n_b}.png')
     # ray.get(loops)
     # ray.shutdown()
+    print('Finished')
 
 
 if __name__=='__main__':

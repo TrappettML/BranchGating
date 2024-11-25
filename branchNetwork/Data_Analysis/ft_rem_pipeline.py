@@ -11,20 +11,29 @@ import pickle
 import re
 import warnings
 from ipdb import set_trace
-from branchNetwork.Data_Analysis.Analysis_pipeline import plot_comparison_scatter_matrix
+from branchNetwork.Data_Analysis.Analysis_pipeline import plot_comparison_scatter_matrix, comparison_plots, comparison_plots_2
 
 # from branchNetwork.Data_Analysis.DetermGates_correlation import parser_filename
 
 
 # new metrics for FT and Remembering
-LR = '1e05'
+LR = '0.0001'
 
-def ft_rem_metric(auc_values, train_order):
+def ft_rem_metric(auc_values: dict, train_order: list, expert_aucs: dict):
     # remembing is the mean of the area under the curve for all tasks 
     # after the trainng task divided by the AUC for the training task block.
     # FT is the mean of the area under the curve for all tasks before the training task
+    """
+    inputs: auc_values: dict([(train, eval)]=auc)
+            train_order: order of training tasks
+            expert_aucs: dict([loss_func][task]=auc)
+    outputs: ft: forward transfer metric
+             rem: remembing metric
+             expert_ft: dict of expert ft metric for each task evaluated"""
     rem_list = []
     ft_list = []
+    expert_ft = {}
+    task_rem = defaultdict(list)
     for (_, eval), auc in auc_values.items():
         eval_block_index = train_order.index(eval)
         eval_train_auc = auc_values[(eval, eval)]
@@ -33,7 +42,15 @@ def ft_rem_metric(auc_values, train_order):
                 ft_list.append(auc)
             elif train_order.index(train) > eval_block_index:
                 rem_list.append(auc/eval_train_auc)
-    return np.mean(ft_list), np.mean(rem_list)
+                task_rem[eval].append(auc/eval_train_auc)
+        # calc different between model and expert
+    if expert_aucs is not None:
+        for task in expert_aucs.keys():
+            expert_ft[task] = (auc_values[(task, task)] - expert_aucs[task])/expert_aucs[task] * 100
+    for task in task_rem.keys():
+        task_rem[task] = np.mean(task_rem[task])
+    # set_trace()
+    return np.mean(ft_list), np.mean(rem_list), expert_ft, task_rem
 
 
 def prep_accuracy_metric(data_dict_acc, key):
@@ -54,6 +71,27 @@ def prep_accuracy_metric(data_dict_acc, key):
             # print(v)
             trapz_dict[(train, k)] = np.trapz(v)
     return trapz_dict, train_order
+
+def time_to_max(data_dict_acc: dict, key: tuple, train_task: int = 90):
+    """
+    We want to return how many epochs it takes to reach 90% of the maximum accuracy
+    inputs: data_dict_acc: dictionary of accuracy data
+            key: model key
+            train_task: training task to evaluate
+    outputs: time_to_max: number of epochs to reach 90% of max accuracy
+    """
+    acc_data = data_dict_acc[key]
+    train_order = [i['train_task'] for i in acc_data['first_last_data']]
+    eval_acc_dict = data_dict_acc[key]['task_evaluation_acc'][f'training_{train_task}'][90]
+    # set_trace()
+    # max_acc = max(eval_acc_dict)
+    # time_to_max = 0
+    # for i, acc in enumerate(eval_acc_dict):
+    #     if acc >= 0.99 * max_acc:
+    #         time_to_max = i
+    #         break
+    # return 1/time_to_max, train_order # one over time to max to make the plot look like bigger is better
+    return np.mean(eval_acc_dict[:3]), train_order
 
 
 def parse_filename_accuracies(filename, matching_pattern=False):
@@ -84,6 +122,15 @@ def rl_filename_parser(filename):
     det_mask = str(matches.group(6))
     return (sparsity, n_branch, det_mask, repeat)
 
+def expert_parser(filename):
+    # pattern = rf"si_all_task_accuracies_soma_func_sum_lr_{LR}_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20.pkl"
+    pattern = rf"si_all_task_accuracies_soma_func_sum_lr_0.0001_loss_func_([^_]*)_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_0.0_det_masks_False_model_name_Expert_repeat_([^_]*)_epochs_per_task_20.pkl"
+    matches = re.search(pattern, filename)
+    if not matches:
+        return None
+    repeat = int(matches.group(6))
+    loss_type = str(matches.group(1))
+    return (loss_type, repeat)
 
 def load_all_accuracies(directory, parser=parse_filename_accuracies):
     # all_acc = load_all_accuracies(path)
@@ -110,7 +157,6 @@ def load_all_accuracies(directory, parser=parse_filename_accuracies):
                             accuracies[key] = data
     return accuracies
 
-
 def path_to_auc(directory: str, parser=parse_filename_accuracies) -> tuple:
     """Takes in the path with subdirectories containing pickle files
        outputs the auc values for each model in a dictionary and training order
@@ -120,12 +166,59 @@ def path_to_auc(directory: str, parser=parse_filename_accuracies) -> tuple:
        """
     all_acc = load_all_accuracies(directory, parser)
     model_auc_values = {}
+    ttm_values = {}
     for key in all_acc.keys():
         model_auc_values[key], train_order = prep_accuracy_metric(all_acc, key)
-    return model_auc_values, train_order
+        ttm_values[key], _ = time_to_max(all_acc, key)
+    return model_auc_values, train_order, ttm_values
 
 
-def aggregate_experiment_runs(data: dict, train_order: list) -> dict:
+def get_mean_expert_auc(expert_dict: dict) -> dict:
+    """
+    inputs: expert_dict: dictionary of expert accuracies with keys=(loss_func, repeat)
+    outputs: expert_acc: dictionary of mean expert accuracies over repeats with keys=(loss_func, task)
+    """
+    expert_acc = defaultdict(lambda: defaultdict(list))
+    tasks = [0, 180, 90]
+    for loss_func,  repeat in expert_dict.keys():
+        for task in tasks:
+            auc_expert = np.trapz(expert_dict[(loss_func, repeat)]['task_evaluation_acc'][f'training_{task}'][task])
+            expert_acc[loss_func][task].append(auc_expert)
+
+    for loss_func in expert_acc.keys():
+        for task in tasks:
+            expert_acc[loss_func][task] = np.mean(expert_acc[loss_func][task])
+    return expert_acc
+
+
+def load_expert_accuracies():
+    expert_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/Expert_data/'
+    # set_trace()
+    expert_dict = load_all_accuracies(expert_path, parser=expert_parser)
+    expert_acc = get_mean_expert_auc(expert_dict)
+    return expert_acc
+
+def aggregate_experiment_runs_w_expert(data: dict, train_order: list, ttm_dict: dict, expert_dict: dict=None) -> dict:
+    """
+    Process the data from a single experiment into a dictionary 
+    where the key is a tuple of the experiment parameters and the 
+    values are the statistics of the metrics FT and remembering.
+    input: data: dictionary where key=(parameters) and value=()
+    """
+    aggregated_data = defaultdict(list)
+    # Aggregate results by (a, b, c, d, e) ignoring the repetition index
+    for (sparsity, n_branch, det_mask, repeat), auc_values in data.items():
+        ft, rem, expert_ft, sep_rem = ft_rem_metric(auc_values, train_order, expert_dict)
+        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'forward_transfer')] = ft
+        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'remembering')] =  rem
+        for task in expert_ft.keys():
+            aggregated_data[(sparsity, n_branch, det_mask, repeat, f'expert_ft_task_{task}')] = expert_ft[task]
+        for task in sep_rem.keys():
+            aggregated_data[(sparsity, n_branch, det_mask, repeat, f'remembering_task_{task}')] = sep_rem[task]
+        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'mean_first_3_acc')] = ttm_dict[(sparsity, n_branch, det_mask, repeat)]
+    return aggregated_data
+
+def aggregate_experiment_runs(data: dict, train_order: list, ttm_dict: dict) -> dict:
     """
     Process the data from a single experiment into a dictionary 
     where the key is a tuple of the experiment parameters and the 
@@ -136,8 +229,10 @@ def aggregate_experiment_runs(data: dict, train_order: list) -> dict:
 
     # Aggregate results by (a, b, c, d, e) ignoring the repetition index
     for (sparsity, n_branch, det_mask, repeat), auc_values in data.items():
-        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'forward_transfer')], aggregated_data[(sparsity, n_branch, det_mask, repeat, 'remembering')] = ft_rem_metric(auc_values, train_order)
-
+        ft, rem, _, _ = ft_rem_metric(auc_values, train_order, None)
+        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'forward_transfer')] = ft
+        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'remembering')] =  rem
+        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'mean_first_3_acc')] = ttm_dict[(sparsity, n_branch, det_mask, repeat)]
     return aggregated_data
 
 
@@ -148,41 +243,39 @@ def make_2d_matrix(data_dict: dict) -> tuple:
     sparsity_values = sorted(set(key[0] for key in data_dict.keys()))
     det_mask = sorted(set(key[2] for key in data_dict.keys()))
     repeat_values = sorted(set(key[3] for key in data_dict.keys()))
+    metrics = sorted(set(key[4] for key in data_dict.keys()))
     # Populate the matrices
     heat_map_data = {}
     for b in det_mask:
-        # Initialize matrices for the heatmaps
-        transfer_matrix = np.full((len(sparsity_values), len(n_branch_values), len(repeat_values)), np.nan)
-        remembering_matrix = np.full((len(sparsity_values), len(n_branch_values), len(repeat_values)), np.nan)
-        # Populate the matrices
-        for (sparsity, n_branch, det_mask, repeat, _metric), stats in data_dict.items():
-            # if repeat == 5:
-            if det_mask != b:
-                continue
-            i = sparsity_values.index(sparsity)
-            j = n_branch_values.index(n_branch)
-            k = repeat_values.index(repeat)
-            # print(f'{i=}, {j=}, {k=}, {metric=}, {stats=}')
-            if _metric == 'forward_transfer':
-                transfer_matrix[i, j, k] = stats
-            elif _metric == 'remembering':
-                remembering_matrix[i, j, k] = stats
+        metric_values = {}
+        for metric in metrics:
+            # Initialize matrices for the heatmaps
+            metric_matrix = np.full((len(sparsity_values), len(n_branch_values), len(repeat_values)), np.nan)
+            # Populate the matrices
+            for (sparsity, n_branch, det_mask, repeat, _metric), stats in data_dict.items():
+                # if repeat == 5:
+                if det_mask != b:
+                    continue
+                i = sparsity_values.index(sparsity)
+                j = n_branch_values.index(n_branch)
+                k = repeat_values.index(repeat)
+                # print(f'{i=}, {j=}, {k=}, {metric=}, {stats=}')
+                if _metric == metric:
+                    metric_matrix[i, j, k] = stats
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            remembering_matrix_mean = np.nanmean(remembering_matrix, axis=2, out=None)
-            transfer_matrix_mean = np.nanmean(transfer_matrix, axis=2, out=None)
-            rem_med_matrix = np.nanmedian(remembering_matrix, axis=2, out=None)
-            ft_med_matrix = np.nanmedian(transfer_matrix, axis=2, out=None)
-            rem_sem_matrix = st.sem(remembering_matrix, axis=2)
-            ft_sem_matrix = st.sem(transfer_matrix, axis=2)
-            rem_std_matrix = np.nanstd(remembering_matrix, axis=2, out=None)
-            ft_std_matrix = np.nanstd(transfer_matrix, axis=2, out=None)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                metric_matrix_mean = np.nanmean(metric_matrix, axis=2, out=None)
+                metric_matrix_med = np.nanmedian(metric_matrix, axis=2)
+                metric_matrix_std = np.nanstd(metric_matrix, axis=2, out=None)
+                metric_matrix_sem = st.sem(metric_matrix, axis=2)
 
-        heat_map_data[b] = {'ft': transfer_matrix_mean, 'rem': remembering_matrix_mean, 
-                            'rem_med': rem_med_matrix, 'ft_med': ft_med_matrix,
-                            'rem_sem': rem_sem_matrix, 'ft_sem': ft_sem_matrix,
-                            'rem_std': rem_std_matrix, 'ft_std': ft_std_matrix}
+            metric_values.update({f'{metric}': metric_matrix_mean, 
+                                    f'{metric}_std': metric_matrix_std, 
+                                    f'{metric}_sem': metric_matrix_sem,
+                                    f'{metric}_med': metric_matrix_med})
+
+        heat_map_data[b] = metric_values
     # set_trace()
     return heat_map_data, sparsity_values, n_branch_values
 
@@ -213,16 +306,16 @@ def plot_heatmap(matrix_d: dict, title: str, y_labels: list, x_labels: list, col
         return fig
         
 def parse_data(path, parser=parse_filename_accuracies) -> dict:
-    auc_dict, train_order = path_to_auc(path, parser)
-    aggregated_data = aggregate_experiment_runs(auc_dict, train_order) 
+    auc_dict, train_order, ttm_dict = path_to_auc(path, parser)
+    aggregated_data = aggregate_experiment_runs(auc_dict, train_order, ttm_dict) 
     return aggregated_data
 
 def pipeline_heatmap(aggregated_data: dict) -> list:
     heat_map_data, sparsity_values, n_branch_values = make_2d_matrix(aggregated_data)
-    figs = [plot_heatmap(heat_map_data, f'Forward Transfer', sparsity_values, n_branch_values,  'FT AUC', 'ft'),
-            plot_heatmap(heat_map_data, f'Remembering', sparsity_values, n_branch_values,  'Rem Ratio', 'rem'),
-            plot_heatmap(heat_map_data, f'Forward Transfer - Median', sparsity_values, n_branch_values,  'FT AUC', 'ft_med'),
-            plot_heatmap(heat_map_data, f'Remembering - Median', sparsity_values, n_branch_values,  'Rem Ratio', 'rem_med')]
+    figs = [plot_heatmap(heat_map_data, f'Forward Transfer', sparsity_values, n_branch_values,  'FT AUC', 'forward_transfer'),
+            plot_heatmap(heat_map_data, f'Remembering', sparsity_values, n_branch_values,  'Rem Ratio', 'remembering'),
+            plot_heatmap(heat_map_data, f'Forward Transfer - Median', sparsity_values, n_branch_values,  'FT AUC', 'forward_transfer_med'),
+            plot_heatmap(heat_map_data, f'Remembering - Median', sparsity_values, n_branch_values,  'Rem Ratio', 'remembering_med')]
     return figs
 
 def expand_heatmap_dicts(heatmap_dict: dict, n_branch_values) -> dict:
@@ -232,7 +325,7 @@ def expand_heatmap_dicts(heatmap_dict: dict, n_branch_values) -> dict:
     for b in heatmap_dict.keys():
         for metric in heatmap_dict[b].keys():
             for n_b in n_branch_values:
-                expanded_dict[b][n_b][metric] = heatmap_dict[b][metric][:,n_branch_values.index(n_b)]
+                expanded_dict[metric][b][n_b] = heatmap_dict[b][metric][:,n_branch_values.index(n_b)]
     
     return expanded_dict
 
@@ -244,8 +337,10 @@ def make_comparison_plots(sl_heatmap_dict: dict, rl_heatmap_dict: dict, sparsity
     sl_expanded = expand_heatmap_dicts(sl_heatmap_dict, n_branch_values)
     rl_expanded = expand_heatmap_dicts(rl_heatmap_dict, rl_branch_values)
     # set_trace()
-    comp_fig = plot_comparison_scatter_matrix(sl_expanded, rl_expanded, n_branch_values, sparsity_values, error_metric='std')
-    return comp_fig
+    comp_fig, ttm_plot = plot_comparison_scatter_matrix(sl_expanded, rl_expanded, n_branch_values, sparsity_values, error_metric='std')
+    plots = comparison_plots(sl_expanded, rl_expanded, n_branch_values, sparsity_values)
+    plots_2 = comparison_plots_2(sl_expanded, rl_expanded, n_branch_values, sparsity_values)
+    return plots + plots_2 + [comp_fig, ttm_plot]
 
 def write_fig(fig: go.Figure, filename: str):
     with open(filename, 'w') as f:
@@ -253,16 +348,21 @@ def write_fig(fig: go.Figure, filename: str):
     print(f'Fig saved to {filename}')
 
 def comp_fig_pipeline(sl_path: str, rl_path: str, save_path: str):
-    sl_auc_dict, sl_train_order = path_to_auc(sl_path)
-    rl_auc_dict, rl_train_order = path_to_auc(rl_path, parser=rl_filename_parser)
+    sl_auc_dict, sl_train_order, sl_ttm = path_to_auc(sl_path)
+    rl_auc_dict, rl_train_order, rl_ttm = path_to_auc(rl_path, parser=rl_filename_parser)
+    expert_dict = load_expert_accuracies()
     # set_trace()
-    sl_aggregated_data = aggregate_experiment_runs(sl_auc_dict, sl_train_order)
-    rl_aggregated_data = aggregate_experiment_runs(rl_auc_dict, rl_train_order)
+    sl_aggregated_data = aggregate_experiment_runs_w_expert(sl_auc_dict, sl_train_order, sl_ttm, expert_dict['CrossEntropyLoss'])
+    rl_aggregated_data = aggregate_experiment_runs_w_expert(rl_auc_dict, rl_train_order, rl_ttm, expert_dict['RLCrit'])
     sl_heat_map_data, sparsity_values, n_branch_values = make_2d_matrix(sl_aggregated_data)
     rl_heat_map_data, _, rl_branch_values = make_2d_matrix(rl_aggregated_data)
-    comp_fig = make_comparison_plots(sl_heat_map_data, rl_heat_map_data, sparsity_values, n_branch_values, rl_branch_values)
-    write_fig(comp_fig, f'{save_path}/comparison_rl_sl_fig.html')
-
+    # comp_fig, ttm_fig = make_comparison_plots(sl_heat_map_data, rl_heat_map_data, sparsity_values, n_branch_values, rl_branch_values)
+    # write_fig(comp_fig, f'{save_path}/comparison_rl_sl_fig.html')
+    # write_fig(ttm_fig, f'{save_path}/time_to_max_fig.html')
+    figs = make_comparison_plots(sl_heat_map_data, rl_heat_map_data, sparsity_values, n_branch_values, rl_branch_values)
+    with open(f'{file_check(save_path)}/all_comparison_rl_sl_fig.html', 'w') as f:
+        for fig in figs:
+            f.write(fig.to_html(full_html=True, include_plotlyjs='cdn'))
 
 def make_plots_folder(folder_name: str):
     if not os.path.exists(folder_name):
@@ -459,11 +559,14 @@ def file_check(file_path):
         os.makedirs(file_path)
     return file_path
 
+def plot_expert_data(path, parser, results_path):
+    data_dict_acc = load_all_accuracies(path, parser)
+    training_plots(data_dict_acc, results_path) 
 
 def main():
-    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_td_{LR}_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/test2_rl_3_td_{LR}_sl_comparison_plots/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel_lr_search/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_3/'
     count = 0
     for path in [sl_path, rl_path]:
         if path == rl_path:
@@ -472,8 +575,8 @@ def main():
         else:
             parser_name = parse_filename_accuracies
             folder_name = 'SL_plots'
-        data = parse_data(path, parser_name)
-        figs = pipeline_heatmap(data)
+        auc_data = parse_data(path, parser_name)
+        figs = pipeline_heatmap(auc_data)
         for i, fig in enumerate(figs):
             if count == 0:
                 with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'w') as f:
@@ -488,7 +591,9 @@ def main():
     print('finished heatmap figs')
     print('finished training plots')
     comp_fig_pipeline(sl_path, rl_path, results_path)
-    print(f'finisihed comparison figs')
+    print(f'finisihed comparison figs saved at {results_path}')
+
+
        
        
 if __name__ == '__main__':
