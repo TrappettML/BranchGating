@@ -63,8 +63,8 @@ def parse_filename(filename: str, file_type='state_dict') -> tuple:
         return None
     
 def rl_filename_parser(filename: str, file_type='state_dict') -> tuple:
-    state_pattern = r"state_dict__soma_func_sum_lr_0.0001_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20"
-    config_pattern = r"configs_soma_func_sum_lr_0.0001_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20.pkl"
+    state_pattern = r"state_dict__soma_func_sum_lr_0.0001_loss_func_RLCritlossCrossEntropyLoss_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_Branch_repeat_([^_]*)_epochs_per_task_20.pkl"
+    config_pattern = r"configs_soma_func_sum_lr_0.0001_loss_func_RLCritlossCrossEntropyLoss_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_Branch_repeat_([^_]*)_epochs_per_task_20.pkl"
     if file_type == 'state_dict':
         pattern = state_pattern
     elif file_type == 'config':
@@ -386,10 +386,10 @@ def file_check(file_path):
 
 
 def main():
-    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/all2_branches_rl_v_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder("/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rlxent_vs_sl/similarity_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
     # rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_gumbel/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_3/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RLXEntropy/'
     loop_ray = ray.remote(loops_plot_for_mean_similarity)
     all_mean_sims, all_corr_sims = defaultdict(dict), defaultdict(dict)
     n_branches = [1, 2, 7, 14, 28, 49]

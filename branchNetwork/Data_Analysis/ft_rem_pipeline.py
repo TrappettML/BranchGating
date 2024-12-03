@@ -111,8 +111,10 @@ def parse_filename_accuracies(filename, matching_pattern=False):
     return (sparsity, n_branch, det_mask, repeat)
         
 def rl_filename_parser(filename):
-    pattern = rf"si_all_task_accuracies_soma_func_sum_lr_{LR}_loss_func_RLCrit_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_BranchModel_repeat_([^_]*)_epochs_per_task_20.pkl"
+    pattern = rf"si_all_task_accuracies_soma_func_sum_lr_{LR}_loss_func_RLCritlossCrossEntropyLoss_n_npb_([^_]*)_([^_]*)_n_branches_([^_]*)_([^_]*)_sparsity_([^_]*)_det_masks_([^_]*)_model_name_Branch_repeat_([^_]*)_epochs_per_task_20.pkl"
+    # "branchNetwork/data/RLXEntropy/CrossEnt_RL_search_rule_2024_11_25/si_all_task_accuracies_soma_func_sum_lr_0.0001_loss_func_RLCritlossCrossEntropyLoss_n_npb_16_16_n_branches_49_49_sparsity_1.0_det_masks_True_model_name_Branch_repeat_3_epochs_per_task_20.pkl"
     matches = re.search(pattern, filename)
+    # set_trace()
     if not matches:
         return None
     sparsity = float(matches.group(5))
@@ -165,6 +167,7 @@ def path_to_auc(directory: str, parser=parse_filename_accuracies) -> tuple:
                 train_order: order of training tasks
        """
     all_acc = load_all_accuracies(directory, parser)
+    train_order = None
     model_auc_values = {}
     ttm_values = {}
     for key in all_acc.keys():
@@ -311,6 +314,7 @@ def parse_data(path, parser=parse_filename_accuracies) -> dict:
     return aggregated_data
 
 def pipeline_heatmap(aggregated_data: dict) -> list:
+    set_trace()
     heat_map_data, sparsity_values, n_branch_values = make_2d_matrix(aggregated_data)
     figs = [plot_heatmap(heat_map_data, f'Forward Transfer', sparsity_values, n_branch_values,  'FT AUC', 'forward_transfer'),
             plot_heatmap(heat_map_data, f'Remembering', sparsity_values, n_branch_values,  'Rem Ratio', 'remembering'),
@@ -564,9 +568,9 @@ def plot_expert_data(path, parser, results_path):
     training_plots(data_dict_acc, results_path) 
 
 def main():
-    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/test2_rl_3_td_{LR}_sl_comparison_plots/similarity_plots/")
+    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rlxent_3_td_{LR}_sl_comparison_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rl_3/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RLXEntropy/'
     count = 0
     for path in [sl_path, rl_path]:
         if path == rl_path:
@@ -576,16 +580,16 @@ def main():
             parser_name = parse_filename_accuracies
             folder_name = 'SL_plots'
         auc_data = parse_data(path, parser_name)
-        figs = pipeline_heatmap(auc_data)
-        for i, fig in enumerate(figs):
-            if count == 0:
-                with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'w') as f:
-                    f.write(fig.to_html(full_html=True, include_plotlyjs='cdn'))
-                    print('saved first fig')
-            else:
-                with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'a') as f:
-                    f.write(fig.to_html(full_html=False, include_plotlyjs=False))
-            count += 1
+        # figs = pipeline_heatmap(auc_data)
+        # for i, fig in enumerate(figs):
+        #     if count == 0:
+        #         with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'w') as f:
+        #             f.write(fig.to_html(full_html=True, include_plotlyjs='cdn'))
+        #             print('saved first fig')
+        #     else:
+        #         with open(file_check(f'{results_path}/{folder_name}')+'/determ_gating_true_false_heatmaps.html', 'a') as f:
+        #             f.write(fig.to_html(full_html=False, include_plotlyjs=False))
+        #     count += 1
         data_dict_acc = load_all_accuracies(path, parser_name)
         training_plots(data_dict_acc, f'{results_path}/{folder_name}') 
     print('finished heatmap figs')

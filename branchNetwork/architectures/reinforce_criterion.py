@@ -28,7 +28,7 @@ class RLCrit(CrossEntropyLoss):
         # pred_probs = self.gumbel_softmax_sample(pred_logits)
         ########## this finally worked ############
         # try this since the next two lines methods didn't work: https://gist.github.com/EderSantana/1ad56b7720af8d706e7f22cbcb8c6d70
-        gumbel_noise = sample_gumbel(pred_logits.shape)
+        gumbel_noise = sample_gumbel(pred_logits.shape) * 0.01
         noised_logits = pred_logits + gumbel_noise
         # act_probs = F.softmax(pred_logits, dim=1)
         act_probs = F.softmax(noised_logits, dim=1)
