@@ -21,7 +21,7 @@ for model in "${model_names[@]}"; do
                 for sparsity in "${sparsities[@]}"; do
                     for lrule in "${lrules[@]}"; do
                         for det_gate in "${det_gates[@]}"; do
-                            echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --sparsity $sparsity --repeat $repeat --learning_rule ${lrule} --determ_gates $det_gate"
+                            echo "--model_name $model --n_branches $branch_num --soma_func $soma_func --lr 0.001 --sparsity $sparsity --repeat $repeat --learning_rule ${lrule} --determ_gates $det_gate"
                         done
                     done
                 done
