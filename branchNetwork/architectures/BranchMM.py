@@ -14,71 +14,78 @@ import inspect
 
 
 class BranchModel(nn.Module):
-        '''
-        layer 1 is 784x784, layer2 is 784x784, layer3 is 784x10'''
-        def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
-            super(BranchModel, self).__init__()
-            # set_trace()
-            learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
-            soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
-            # self.layer_1 = nn.Linear(model_configs['n_in'], 784)
-            layer_2_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][0]
-            layer_3_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][1]
-            drop_ratio = model_configs.get('dropout', 0.0)
-            
-            self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
-                                      n_npb=model_configs['n_npb'][0],
-                                       n_b = model_configs['n_branches'][0],
-                                       n_next_h=layer_2_n_in, # number of next layer's inputs
-                                       device=model_configs['device'],
-                                       )
-            self.gating_1 = BranchGatingActFunc(layer_2_n_in,
-                                                model_configs['n_branches'][0],
-                                                model_configs['n_contexts'],
-                                                model_configs['sparsity'],
-                                                learn_gates,
-                                                soma_func=soma_func,
-                                                device=model_configs['device'],
-                                                det_masks=model_configs.get('det_masks', False),)
-            self.layer_2 = BranchLayer(layer_2_n_in,
-                                      model_configs['n_npb'][1],
-                                       model_configs['n_branches'][1],
-                                       layer_3_n_in,
-                                       device=model_configs['device'])
-            self.gating_2 = BranchGatingActFunc(layer_3_n_in,
-                                                model_configs['n_branches'][1],
-                                                model_configs['n_contexts'],
-                                                model_configs['sparsity'],
-                                                learn_gates,
-                                                soma_func=soma_func,
-                                                device=model_configs['device'],
-                                                det_masks=model_configs.get('det_masks', False),)
-            
-            self.layer_3 = nn.Linear(layer_3_n_in, model_configs['n_out'], device=model_configs['device'])
-            self.drop_out = nn.Dropout(drop_ratio)
-            self.act_func = model_configs.get('act_func', nn.ReLU)()
-            
-                     
-        def forward(self, x, context=0):
-            # set_trace()
-            self.branch_activities_1 = self.layer_1(x)
-            self.soma_activities_1 = self.gating_1(self.branch_activities_1, context)
-            self.gated_branch_1 = self.gating_1.gated_branches
-            x = self.drop_out(self.act_func(self.soma_activities_1))
-            self.x1_hidden = x
-            self.branch_activities_2 = self.layer_2(x)
-            self.soma_activities_2 = self.gating_2(self.branch_activities_2, context)
-            self.gated_branch_2 = self.gating_2.gated_branches
-            x = self.drop_out(self.act_func(self.soma_activities_2))
-            self.x2_hidden = x
-            return self.layer_3(x)
+    '''
+    layer 1 is 784x784, layer2 is 784x784, layer3 is 784x10'''
+    def __init__(self, model_configs: dict[str, Union[str, int, float, dict]]):
+        super(BranchModel, self).__init__()
+        # set_trace()
+        learn_gates = model_configs['learn_gates'] if 'learn_gates' in model_configs else False
+        soma_func = model_configs['soma_func'] if 'soma_func' in model_configs else 'sum'
+        # self.layer_1 = nn.Linear(model_configs['n_in'], 784)
+        layer_2_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][0]
+        layer_3_n_in = 784 if 'hidden' not in model_configs else model_configs['hidden'][1]
+        drop_ratio = model_configs.get('dropout', 0.0)
+        sparsities = model_configs.get('sparsity', 0)
+        if type(sparsities) == tuple:
+            sparsity_1 = sparsities[0]
+            sparsity_2 = sparsities[1]
+        else:
+            sparsity_1 = sparsities
+            sparsity_2 = sparsities
         
-        def heb_branch_update(self, eta=0.1):
-            pass
+        self.layer_1 = BranchLayer(n_in=model_configs['n_in'],
+                                    n_npb=model_configs['n_npb'][0],
+                                    n_b = model_configs['n_branches'][0],
+                                    n_next_h=layer_2_n_in, # number of next layer's inputs
+                                    device=model_configs['device'],
+                                    )
+        self.gating_1 = BranchGatingActFunc(layer_2_n_in,
+                                            model_configs['n_branches'][0],
+                                            model_configs['n_contexts'],
+                                            sparsity_1,
+                                            learn_gates,
+                                            soma_func=soma_func,
+                                            device=model_configs['device'],
+                                            det_masks=model_configs.get('det_masks', False),)
+        self.layer_2 = BranchLayer(layer_2_n_in,
+                                    model_configs['n_npb'][1],
+                                    model_configs['n_branches'][1],
+                                    layer_3_n_in,
+                                    device=model_configs['device'])
+        self.gating_2 = BranchGatingActFunc(layer_3_n_in,
+                                            model_configs['n_branches'][1],
+                                            model_configs['n_contexts'],
+                                            sparsity_2,
+                                            learn_gates,
+                                            soma_func=soma_func,
+                                            device=model_configs['device'],
+                                            det_masks=model_configs.get('det_masks', False),)
+        
+        self.layer_3 = nn.Linear(layer_3_n_in, model_configs['n_out'], device=model_configs['device'])
+        self.drop_out = nn.Dropout(drop_ratio)
+        self.act_func = model_configs.get('act_func', nn.ReLU)()
+        
+                    
+    def forward(self, x, context=0):
+        # set_trace()
+        self.branch_activities_1 = self.layer_1(x)
+        self.soma_activities_1 = self.gating_1(self.branch_activities_1, context)
+        self.gated_branch_1 = self.gating_1.gated_branches
+        x = self.drop_out(self.act_func(self.soma_activities_1))
+        self.x1_hidden = x
+        self.branch_activities_2 = self.layer_2(x)
+        self.soma_activities_2 = self.gating_2(self.branch_activities_2, context)
+        self.gated_branch_2 = self.gating_2.gated_branches
+        x = self.drop_out(self.act_func(self.soma_activities_2))
+        self.x2_hidden = x
+        return self.layer_3(x)
+    
+    def heb_branch_update(self, eta=0.1):
+        pass
 
-        # def __repr__(self):
-            
-        #     return super().__repr__() + f'\n path: {os.path.abspath(inspect.getfile(self.__class__))}'
+    # def __repr__(self):
+        
+    #     return super().__repr__() + f'\n path: {os.path.abspath(inspect.getfile(self.__class__))}'
         
         
 def test_Branch(soma_func='sum'):

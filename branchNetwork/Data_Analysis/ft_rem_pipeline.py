@@ -17,7 +17,7 @@ from branchNetwork.Data_Analysis.Analysis_pipeline import plot_comparison_scatte
 
 
 # new metrics for FT and Remembering
-LR = '0.0001'
+LR = '0.001'
 
 def ft_rem_metric(auc_values: dict, train_order: list, expert_aucs: dict):
     # remembing is the mean of the area under the curve for all tasks 
@@ -568,11 +568,12 @@ def plot_expert_data(path, parser, results_path):
     training_plots(data_dict_acc, results_path) 
 
 def main():
-    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rlxent_3_td_{LR}_sl_comparison_plots/")
+    results_path = make_plots_folder(f"/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/rlxent_4_td_{LR}_sl_comparison_plots/")
     sl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/sl_determ_gates/'
-    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/RLXEntropy/'
+    rl_path = '/home/users/MTrappett/mtrl/BranchGatingProject/branchNetwork/data/XEntr_RL/'
     count = 0
-    for path in [sl_path, rl_path]:
+    # for path in [sl_path, rl_path]:
+    for path in [rl_path]:
         if path == rl_path:
             parser_name = rl_filename_parser
             folder_name = 'RL_plots'
@@ -591,7 +592,7 @@ def main():
         #             f.write(fig.to_html(full_html=False, include_plotlyjs=False))
         #     count += 1
         data_dict_acc = load_all_accuracies(path, parser_name)
-        training_plots(data_dict_acc, f'{results_path}/{folder_name}') 
+        training_plots(data_dict_acc, file_check(f'{results_path}/{folder_name}')) 
     print('finished heatmap figs')
     print('finished training plots')
     comp_fig_pipeline(sl_path, rl_path, results_path)

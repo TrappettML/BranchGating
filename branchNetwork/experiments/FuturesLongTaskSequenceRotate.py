@@ -25,6 +25,10 @@ import time
 import re
 import queue
 
+import joblib
+import sys
+import loky
+
 os.environ['OMP_NUM_THREADS'] = '1'
 torch.set_num_threads(1)
 
@@ -156,8 +160,8 @@ def setup_model(model_name: str,
                 model_dict: Union[None, dict[str, Callable]]):
     
     assert model_name in model_dict.keys(), f'{model_name} not in model_dict'
-    model = torch.compile(model_dict[model_name](model_configs)) # trying torch jit
-    # model = model_dict[model_name](model_configs) # no jit   
+    # model = torch.compile(model_dict[model_name](model_configs)) # trying torch jit
+    model = model_dict[model_name](model_configs) # no jit   
     optim = torch.optim.Adam(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'])
     # optim = AdamSI(model.parameters(), lr=model_configs['lr'], weight_decay=model_configs['l2'], c=0.2)
     criterion = model_configs['loss_func']
@@ -354,10 +358,11 @@ if __name__=='__main__':
     angle_increments = 90
     time_start = time.time()
     results = run_continual_learning({'model_name': 'Branch', 'n_b_1': 1, 'n_npb': 784, 'rotation_degrees': [0, 270, 45, 135, 225, 350, 180, 315, 60, 150, 240, 330, 90], 
-                                      'epochs_per_task': 4, 'det_masks': False, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'sum', 'act_func': nn.ReLU, 'device': device, 'n_repeat': 0, 
-                                      'sparsity': 0.5, 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
-                                      'file_path': './branchNetwork/data/testing_run/', 'file_name': 'test_x', 'l2': 0.0})
+                                      'epochs_per_task': 4, 'det_masks': True, 'batch_size': 32, 'learning_rule': 'rl', 'soma_func': 'sum', 'act_func': nn.ReLU, 'device': device, 'n_repeat': 0, 
+                                      'sparsity': (0.1,0.5), 'learn_gates': False, 'debug': True, 'lr': 0.0001, 'hidden': [784, 784],
+                                      'file_path': './branchNetwork/data/testing_run/', 'file_name': 'asym_sparsity', 'l2': 0.0})
     time_end = time.time()
     print(f'Time to complete: {time_end - time_start}')
     # print(f'Results: {results}')
+    
     print("________Finished_________")

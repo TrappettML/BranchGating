@@ -98,7 +98,7 @@ def load_rotated_flattened_data(dataset_name='MNIST', batch_size=32, rotation_in
     return train_loader, test_loader
 
 
-def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, download=True, root=DATA_DIR):
+def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, download=True, root=DATA_DIR, num_workers=0):
     """
     Load the MNIST dataset with each image rotated by a fraction of pi radians and flattened.
 
@@ -128,8 +128,8 @@ def load_rotated_flattened_mnist_data(batch_size=32, rotation_in_degrees=0, down
     test_dataset = datasets.MNIST(root=DATA_DIR, train=False, download=download, transform=transform)
 
     # Create data loaders for the training and test sets
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, test_loader
 
@@ -163,7 +163,7 @@ def generate_permutation_indices(image_size, permutation_percent):
     return indices
 
 
-def load_permuted_flattened_mnist_data(batch_size=32, permutation_percent=0, download=True, root=DATA_DIR):
+def load_permuted_flattened_mnist_data(batch_size=32, permutation_percent=0, download=True, root=DATA_DIR, num_workers=1):
     """
     Load the MNIST dataset with each image having a percentage of its pixels permuted and flattened.
 
@@ -194,8 +194,8 @@ def load_permuted_flattened_mnist_data(batch_size=32, permutation_percent=0, dow
     test_dataset = datasets.MNIST(root=root, train=False, download=download, transform=transform)
 
     # Create data loaders for the training and test sets
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, test_loader
     
