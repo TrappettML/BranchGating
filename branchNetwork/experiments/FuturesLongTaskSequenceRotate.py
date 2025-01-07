@@ -273,7 +273,7 @@ def pickle_data(data_to_be_saved, file_path, file_name):
 
 @timing_decorator
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
-    print(f'Results will save at:\n{TRAIN_CONFIGS['file_path']}')
+    print(f"Results will save at:\n{TRAIN_CONFIGS['file_path']}")
     n_b_1 = configs.get('n_b_1', 14) #  if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
     # set_trace()
