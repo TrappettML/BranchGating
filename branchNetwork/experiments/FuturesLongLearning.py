@@ -40,7 +40,7 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'/sl_asym_sparse_00/asym_sparse_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'/sl_asym_sparse_01/asym_sparse_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/tau/BranchGatingProject/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:
@@ -54,7 +54,7 @@ def run_tune(args):
     param_config['epochs_per_task'] = 20
     param_config['n_eval_tasks'] = 3
     param_config['learn_gates'] = False
-    param_config['sparsity'] = (0, args.sparsity)
+    param_config['sparsity'] = (0.1, args.sparsity)
     param_config['soma_func'] = args.soma_func
     param_config['hidden'] = args.hidden
     gates_map = {0: False, 1: True}

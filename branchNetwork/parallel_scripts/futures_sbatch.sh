@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=00Sprs
-#SBATCH --output=00Sprs/%x-%A-%a.out
-#SBATCH --error=00Sprs/%x-%A-%a.err
+#SBATCH --job-name=01Sprs
+#SBATCH --output=01Sprs/%x-%A-%a.out
+#SBATCH --error=01Sprs/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4

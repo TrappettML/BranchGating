@@ -210,15 +210,15 @@ def aggregate_experiment_runs_w_expert(data: dict, train_order: list, ttm_dict: 
     """
     aggregated_data = defaultdict(list)
     # Aggregate results by (a, b, c, d, e) ignoring the repetition index
-    for (sparsity, n_branch, det_mask, repeat), auc_values in data.items():
+    for auc_key, auc_values in data.items():
         ft, rem, expert_ft, sep_rem = ft_rem_metric(auc_values, train_order, expert_dict)
-        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'forward_transfer')] = ft
-        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'remembering')] =  rem
+        aggregated_data[(*auc_key, 'forward_transfer')] = ft
+        aggregated_data[(*auc_key, 'remembering')] =  rem
         for task in expert_ft.keys():
-            aggregated_data[(sparsity, n_branch, det_mask, repeat, f'expert_ft_task_{task}')] = expert_ft[task]
+            aggregated_data[(*auc_key, f'expert_ft_task_{task}')] = expert_ft[task]
         for task in sep_rem.keys():
-            aggregated_data[(sparsity, n_branch, det_mask, repeat, f'remembering_task_{task}')] = sep_rem[task]
-        aggregated_data[(sparsity, n_branch, det_mask, repeat, 'mean_first_3_acc')] = ttm_dict[(sparsity, n_branch, det_mask, repeat)]
+            aggregated_data[(*auc_key, f'remembering_task_{task}')] = sep_rem[task]
+        aggregated_data[(*auc_key, 'mean_first_3_acc')] = ttm_dict[auc_key]
     return aggregated_data
 
 def aggregate_experiment_runs(data: dict, train_order: list, ttm_dict: dict) -> dict:
@@ -309,6 +309,8 @@ def plot_heatmap(matrix_d: dict, title: str, y_labels: list, x_labels: list, col
         return fig
         
 def parse_data(path, parser=parse_filename_accuracies) -> dict:
+    # Takes in the path, a sl or rl parser and outputs a dictionary
+    # aggregated_data: []
     auc_dict, train_order, ttm_dict = path_to_auc(path, parser)
     aggregated_data = aggregate_experiment_runs(auc_dict, train_order, ttm_dict) 
     return aggregated_data

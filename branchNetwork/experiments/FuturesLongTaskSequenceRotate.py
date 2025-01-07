@@ -49,7 +49,6 @@ def train_epoch(model, data_loader, task, optimizer, criterion, device='cpu', de
 
 def evaluate_model(model, task, data_loader, criterion, device, debug):
     model.eval()
-    print(f'begining evaluation for task: {task}')
     # print(f'{model=},\n{task=},\n{data_loader=},\n{criterion=},\n{device=},\n{debug=}')
     # for i, (images, labels) in enumerate(data_loader):
     #     print(f'evaluating batch {i}')
@@ -83,6 +82,7 @@ def evaluate_all_tasks(model: nn.Module, test_loaders: dict[int, DataLoader], cr
     # results = list(map(lambda x: _evaluate_model(*x), tasks))
     data_struct.put(results)
     # return results # list of dictionaries
+    print('Finished Evaluation')
     return
 
 def calc_remembering(A_acc_1: float, A_acc_2: float) -> float:
@@ -271,8 +271,9 @@ def pickle_data(data_to_be_saved, file_path, file_name):
         dump(data_to_be_saved, f)
     print(f'Saved results to {file_path}/{file_name}.pkl')
 
-
+@timing_decorator
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
+    print(f'Results will save at:\n{TRAIN_CONFIGS['file_path']}')
     n_b_1 = configs.get('n_b_1', 14) #  if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
     # set_trace()
