@@ -273,7 +273,7 @@ def pickle_data(data_to_be_saved, file_path, file_name):
 
 @timing_decorator
 def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
-    print(f"Results will save at:\n{TRAIN_CONFIGS['file_path']}")
+    
     n_b_1 = configs.get('n_b_1', 14) #  if 'n_b_1' in configs.keys() else 14
     n_b_2 = n_b_1
     # set_trace()
@@ -297,6 +297,7 @@ def run_continual_learning(configs: dict[str, Union[int, list[int]]]):
                     'file_name': configs.get('file_name', '/longsequence_data'), # 'longsequence_data' if 'file_name' not in configs else configs['file_name'],
                     'debug': configs.get('debug', False), #False if 'debug' not in configs else configs['debug'],
                     }
+    print(f"Results will save at:\n{TRAIN_CONFIGS['file_path']}")
     hiddens = configs.get('hidden', [784, 784])
     hidden_1, hidden_2 = hiddens[0], hiddens[1]
     MODEL_CONFIGS = {'learn_gates': configs.get('learn_gates', False), 
