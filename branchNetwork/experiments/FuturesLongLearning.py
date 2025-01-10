@@ -40,7 +40,7 @@ def parse_list(arg_string):
         raise argparse.ArgumentTypeError("List must be of integers")
     
 def run_tune(args):
-    sub_folder = f'/sl_asym_sparse_equal_/asym_sparse_{datetime.now().strftime("%Y_%m_%d")}'
+    sub_folder = f'/rl_asym_sparse_equal_/asym_sparse_{datetime.now().strftime("%Y_%m_%d")}'
     if 'talapas' in socket.gethostname():
         path = f'/home/mtrappet/tau/BranchGatingProject/data/Rotate_LongSequence_talapas/{sub_folder}/'
     else:

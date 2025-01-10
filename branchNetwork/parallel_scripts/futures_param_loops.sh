@@ -7,11 +7,11 @@ branch_nums=(1)
 # branch_nums=(1 2 5 10 20 50 100 200 400 800 1200)
 # soma_funcs=('tanh' 'sigmoid' 'softplus' 'softsign' 'elu' 'gelu' 'selu')
 soma_funcs=('sum')
-sparsities=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0) #(0.0 0.5) # 
+sparsities=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9) #(0.0 0.5) # 
 repeats=(1 2 3 4 5)
 hiddens=(784) # (50 100 200 400)
 n_npbs=(1) # 5 10 20 50 100 200 400 800 1200)
-lrules=('sl')
+lrules=('rl')
 det_gates=(0 1)
 
 for model in "${model_names[@]}"; do

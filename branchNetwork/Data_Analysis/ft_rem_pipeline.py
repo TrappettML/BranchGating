@@ -214,11 +214,15 @@ def aggregate_experiment_runs_w_expert(data: dict, train_order: list, ttm_dict: 
         ft, rem, expert_ft, sep_rem = ft_rem_metric(auc_values, train_order, expert_dict)
         aggregated_data[(*auc_key, 'forward_transfer')] = ft
         aggregated_data[(*auc_key, 'remembering')] =  rem
+        all_exp_ft = []
         for task in expert_ft.keys():
             aggregated_data[(*auc_key, f'expert_ft_task_{task}')] = expert_ft[task]
+            all_exp_ft.append(expert_ft[task])
+        aggregated_data[(*auc_key, f'expert_ft_all')] = np.mean(all_exp_ft)
         for task in sep_rem.keys():
             aggregated_data[(*auc_key, f'remembering_task_{task}')] = sep_rem[task]
         aggregated_data[(*auc_key, 'mean_first_3_acc')] = ttm_dict[auc_key]
+        # set_trace()
     return aggregated_data
 
 def aggregate_experiment_runs(data: dict, train_order: list, ttm_dict: dict) -> dict:
