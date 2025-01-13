@@ -17,7 +17,8 @@ class RLCrit(CrossEntropyLoss):
         self.baseline = torch.tensor([0]).requires_grad_(False).detach()
         self.count = 0
         self.temperature = 1.0
-        self.loss = nn.CrossEntropyLoss(reduction='none')
+        # self.loss = nn.CrossEntropyLoss(reduction='none')
+        # self.loss =nn.MSELoss(reduce=None)
 
     def forward(self, pred_logits, y_true):
         ''''pred_logits is the output of the model (batch x categories), 
@@ -28,14 +29,17 @@ class RLCrit(CrossEntropyLoss):
         # pred_probs = self.gumbel_softmax_sample(pred_logits)
         ########## this finally worked ############
         # try this since the next two lines methods didn't work: https://gist.github.com/EderSantana/1ad56b7720af8d706e7f22cbcb8c6d70
-        gumbel_noise = sample_gumbel(pred_logits.shape) * 0.01
+        tensor_mean = pred_logits.mean()
+        tensor_std = pred_logits.std()
+        adaptive_scale = 0.1 * (tensor_std + tensor_mean.abs())
+        gumbel_noise = sample_gumbel(pred_logits.shape) * adaptive_scale
         noised_logits = pred_logits + gumbel_noise
         # act_probs = F.softmax(pred_logits, dim=1)
         act_probs = F.softmax(noised_logits, dim=1)
-        # y_pred = torch.argmax(act_probs, dim=-1)
+        y_pred = torch.argmax(act_probs, dim=-1)
         logs = torch.log(torch.max(act_probs, dim=1)[0])
-        # r = torch.eq(y_pred, y_true).float()
-        r = -self.loss(pred_logits, y_true).float()
+        r = torch.eq(y_pred, y_true).float()
+        # r = -self.loss(pred_logits, y_true).float()
         baseline = torch.mean(r)
         adv = r - baseline
         loss = -1 * torch.mean(logs * adv)
