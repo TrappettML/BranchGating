@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition=computelong,computelong_intel
-#SBATCH --job-name=RLAllSprsEQ
-#SBATCH --output=RLAllSprsEQ/%x-%A-%a.out
-#SBATCH --error=RLAllSprsEQ/%x-%A-%a.err
+#SBATCH --job-name=slPermLabels
+#SBATCH --output=slPermLabels/%x-%A-%a.out
+#SBATCH --error=slPermLabels/%x-%A-%a.err
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
