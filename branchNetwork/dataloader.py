@@ -204,7 +204,7 @@ def load_permuted_labels_mnist_data(
     batch_size: int = 32,
     rotation_in_degrees: float = 0,
     download: bool = True,
-    root: str = 'data',
+    root: str = DATA_DIR,
     num_workers: int = 0,
     num_permutations: int = 100,
     ):
